@@ -1,0 +1,15 @@
+{
+  "name": "PSB Student - Result Portal",
+  "short_name": "PSB Student",
+  "description": "अपना Result देखें, Daily Quiz खेलें, Doubt पूछें — एक ही App में।",
+  "start_url": "./student-app.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f2f5fa",
+  "theme_color": "#1e6b4d",
+  "icons": [
+    { "src": "icon-student-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-student-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

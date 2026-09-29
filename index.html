@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PSB School Management App — School, Teacher, Student और Headmaster के लिए Complete School Management Software</title>
+<meta name="description" content="PSB School Management App भारत के Schools के लिए एक Complete School Management Software है — Teacher App से Paper, Notes, Mark Sheet, Admit/ID Card, Timetable और Attendance संभालें; Student App से Result देखें, Daily Quiz खेलें; Headmaster App से पूरे School के Teachers, Students, Notices, Attendance-Result और Fees का Overview एक जगह पाएं।">
+<meta name="keywords" content="school management app, school management software, PSB school management, school app India, teacher app, student app, headmaster app, attendance app for school, fee management app, admit card maker, mark sheet software, result app for students">
+<link rel="canonical" href="https://psbcompany.in/">
+<meta name="robots" content="index, follow">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="PSB School Management App — School, Teacher, Student और Headmaster के लिए Complete School Management Software">
+<meta property="og:description" content="एक ही App में Teacher, Student और Headmaster — Paper, Attendance, Fees, Result, Notices सब कुछ एक जगह। भारत के Schools के लिए बना Complete School Management Software।">
+<meta property="og:url" content="https://psbcompany.in/">
+<meta property="og:locale" content="hi_IN">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="PSB School Management App — Complete School Management Software">
+<meta name="twitter:description" content="Teacher, Student और Headmaster के लिए एक ही App — Paper, Attendance, Fees, Result, Notices सब कुछ एक जगह।">
+
+<!--
+  ---- SEO पर एक ज़रूरी और ईमानदार बात ----
+  नीचे दिया गया Title, Meta Description, Keywords और JSON-LD Structured Data
+  Google को यह साफ़-साफ़ बताने के लिए हैं कि यह Page "School Management App/
+  Software" के बारे में है — यह On-Page SEO की सबसे मज़बूत नींव है।
+  लेकिन कोई भी ईमानदार Developer यह वादा नहीं कर सकता कि इतने भर से आपका App
+  हर "स्कूल" से जुड़ी Google Search में हमेशा सबसे ऊपर आ जाएगा — Google की
+  Ranking बहुत सी बातों पर निर्भर करती है जो सिर्फ इस Page के अंदर के Code से
+  नहीं बदलतीं: आपकी Website कितनी पुरानी/भरोसेमंद है (Domain Authority),
+  कितनी अन्य अच्छी Websites आपको Link करती हैं (Backlinks), Competitor Apps
+  कितने मज़बूत हैं, Google Search Console में Site Verify और Sitemap Submit
+  हुआ है या नहीं, Page कितनी तेज़ Load होता है, वगैरह। यह बदलाव आपकी Ranking
+  को ज़रूर बेहतर बनाने में मदद करेगा, पर "सबसे ऊपर" की कोई गारंटी नहीं देता।
+-->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "PSB School Management App",
+  "alternateName": "PSB Teacher PRO",
+  "applicationCategory": "EducationalApplication",
+  "operatingSystem": "Web, Android, iOS",
+  "description": "PSB School Management App भारत के Schools के लिए एक Complete School Management Software है, जिसमें Teacher App (Paper, Notes, Mark Sheet, Admit/ID Card, Timetable, Attendance), Student App (Result, Daily Quiz, Doubt Forum) और Headmaster App (पूरे School के Teachers/Students का Overview, Notices, Attendance-Result Summary, Fees Overview) शामिल है।",
+  "url": "https://psbcompany.in/",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "INR"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "PSB Company",
+    "url": "https://psbcompany.in/"
+  }
+}
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Hind:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --ink:#16233F;
+    --ink-2:#223257;
+    --paper:#FBFAF6;
+    --paper-line:#E4DFCF;
+    --red:#C1272D;
+    --red-dark:#9E1F24;
+    --gold:#D9A441;
+    --gold-dark:#A8791F;
+    --slate:#4B5A78;
+    --slate-light:#7A88A3;
+    --white:#FFFFFF;
+    --radius:14px;
+    --font-display:'Baloo 2', sans-serif;
+    --font-body:'Hind', sans-serif;
+    --font-mono:'JetBrains Mono', monospace;
+    --shadow:0 18px 40px -18px rgba(22,35,63,0.35);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    font-family:var(--font-body);
+    color:var(--slate);
+    background:var(--paper);
+    line-height:1.6;
+  }
+  h1,h2,h3,.brand{font-family:var(--font-display);color:var(--ink);}
+  img,svg{max-width:100%;display:block;}
+  a{color:inherit;}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px;}
+  .eyebrow{
+    font-family:var(--font-body);
+    font-size:13px;
+    color:var(--red);
+    font-weight:700;
+    margin:0 0 10px;
+  }
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:var(--font-body);font-weight:700;font-size:15px;
+    padding:13px 26px;border-radius:999px;text-decoration:none;
+    border:2px solid transparent;cursor:pointer;transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .btn:hover{transform:translateY(-2px);}
+  .btn-red{background:var(--red);color:#fff;box-shadow:0 10px 24px -10px rgba(193,39,45,0.7);}
+  .btn-red:hover{background:var(--red-dark);}
+  .btn-outline{background:transparent;color:#fff;border-color:rgba(255,255,255,0.55);}
+  .btn-outline:hover{border-color:#fff;background:rgba(255,255,255,0.08);}
+  .btn-ink{background:var(--ink);color:#fff;}
+  .btn-ink:hover{background:var(--ink-2);}
+
+  /* ---------- NAV ---------- */
+  header.nav{
+    position:sticky;top:0;z-index:50;
+    background:rgba(22,35,63,0.96);backdrop-filter:blur(6px);
+  }
+  .nav-inner{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;max-width:1120px;margin:0 auto;}
+  .brand{color:#fff;font-size:20px;font-weight:700;text-decoration:none;display:flex;align-items:baseline;gap:4px;}
+  .brand span{color:var(--gold);}
+  .nav-links{display:flex;align-items:center;gap:28px;}
+  .nav-links a{color:#D9DEEA;text-decoration:none;font-size:15px;font-weight:500;}
+  .nav-links a:hover{color:#fff;}
+  .nav-cta{display:none;}
+  .hamburger{display:none;background:none;border:none;color:#fff;font-size:24px;cursor:pointer;}
+  @media (max-width:760px){
+    .nav-links{
+      position:absolute;top:100%;left:0;right:0;background:var(--ink);
+      flex-direction:column;align-items:flex-start;gap:0;padding:8px 24px 18px;
+      display:none;
+    }
+    .nav-links.open{display:flex;}
+    .nav-links a{padding:10px 0;width:100%;border-bottom:1px solid rgba(255,255,255,0.08);}
+    .hamburger{display:block;}
+  }
+
+  /* ---------- HERO ---------- */
+  .hero{background:linear-gradient(180deg,var(--ink) 0%, var(--ink-2) 100%);color:#fff;position:relative;overflow:hidden;}
+  .hero-inner{
+    max-width:1120px;margin:0 auto;padding:64px 24px 90px;
+    display:grid;grid-template-columns:1.1fr 0.9fr;gap:48px;align-items:center;
+  }
+  .hero h1{font-size:clamp(28px,4.4vw,44px);line-height:1.18;margin:0 0 18px;color:#fff;font-weight:700;}
+  .hero p.lead{font-size:17px;color:#C9D2E5;max-width:46ch;margin:0 0 30px;}
+  .hero-ctas{display:flex;flex-wrap:wrap;gap:14px;}
+
+  /* stamped marksheet visual */
+  .stamp-card{
+    background:var(--paper);color:var(--ink);border-radius:10px;
+    padding:22px 22px 54px;transform:rotate(-4deg);
+    box-shadow:var(--shadow);position:relative;
+    background-image:repeating-linear-gradient(#FBFAF6 0 27px, var(--paper-line) 27px 28px);
+    font-family:var(--font-mono);
+  }
+  .stamp-card .sc-head{font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--ink);margin-bottom:10px;display:flex;justify-content:space-between;}
+  .stamp-card .sc-row{display:flex;justify-content:space-between;font-size:12px;color:var(--slate);padding:4px 0;}
+  .stamp-card .sc-row b{color:var(--ink);}
+  .stamp-mark{
+    position:absolute;right:16px;bottom:-24px;
+    width:82px;height:82px;border-radius:50%;
+    border:3px solid var(--red);color:var(--red);
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-display);font-weight:800;font-size:14px;
+    transform:rotate(14deg);letter-spacing:.05em;
+    background:rgba(251,250,246,0.96);
+  }
+  @media (max-width:860px){
+    .hero-inner{grid-template-columns:1fr;padding-top:44px;}
+    .stamp-card{max-width:320px;margin:0 auto;}
+  }
+
+  /* ---------- SECTIONS ---------- */
+  section{padding:76px 0;}
+  section h2{font-size:clamp(24px,3.2vw,34px);margin:0 0 16px;}
+  .section-head{max-width:640px;margin-bottom:48px;}
+  .section-head p{color:var(--slate);font-size:16px;margin:0;}
+
+  /* services */
+  .cards-2{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;}
+  @media (max-width:980px){.cards-2{grid-template-columns:1fr 1fr;}}
+  @media (max-width:760px){.cards-2{grid-template-columns:1fr;}}
+  .page-card{
+    background:var(--white);border:1px solid var(--paper-line);border-radius:var(--radius);
+    padding:32px 28px;
+    background-image:repeating-linear-gradient(#FFFFFF 0 30px, #EFEBDD 30px 31px);
+  }
+  .page-card .pc-icon{font-size:30px;margin-bottom:14px;}
+  .page-card h3{font-size:21px;margin:0 0 4px;}
+  .page-card .pc-desc{color:var(--slate-light);font-size:14px;margin:0 0 18px;}
+  .page-card ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;}
+  .page-card li{font-size:14.5px;color:var(--slate);display:flex;gap:10px;align-items:flex-start;}
+  .card-more{display:inline-block;margin-top:6px;font-size:13.5px;font-weight:700;color:var(--red);text-decoration:none;}
+  .card-more:hover{text-decoration:underline;}
+
+  /* ---------- FEATURES (बदलाव — पूरी Feature-सूची) ---------- */
+  .features-band{background:var(--white);border-top:1px solid var(--paper-line);border-bottom:1px solid var(--paper-line);}
+  .app-track{margin-bottom:56px;}
+  .app-track:last-child{margin-bottom:0;}
+  .track-head{display:flex;align-items:center;gap:14px;margin-bottom:26px;}
+  .track-stamp{
+    width:52px;height:52px;border-radius:50%;flex:none;
+    display:flex;align-items:center;justify-content:center;font-size:22px;
+    border:2.5px solid var(--red);color:var(--red);transform:rotate(-8deg);
+    font-family:var(--font-display);background:rgba(193,39,45,0.05);
+  }
+  .app-track-gold .track-stamp{border-color:var(--gold);color:var(--gold-dark);background:rgba(217,164,65,0.08);}
+  .track-head h3{margin:0;font-size:22px;}
+  .track-head p{margin:2px 0 0;font-size:14px;color:var(--slate-light);}
+  .feature-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;}
+  .feature-tile{
+    background:var(--paper);border:1px solid var(--paper-line);border-radius:12px;
+    padding:18px 18px 20px;
+    background-image:repeating-linear-gradient(#FBFAF6 0 26px, var(--paper-line) 26px 27px);
+  }
+  .feature-tile .ft-icon{font-size:22px;margin-bottom:8px;}
+  .feature-tile h4{margin:0 0 4px;font-size:15px;color:var(--ink);font-family:var(--font-display);}
+  .feature-tile p{margin:0;font-size:13px;color:var(--slate);line-height:1.5;}
+  .feature-group-label{
+    font-family:var(--font-body);font-size:12.5px;font-weight:700;color:var(--red);
+    text-transform:uppercase;letter-spacing:.04em;margin:22px 0 12px;
+  }
+  .app-track-gold .feature-group-label{color:var(--gold-dark);}
+  .app-track-gold .card-more{color:var(--gold-dark);}
+
+  /* pricing */
+  .pricing-band{background:var(--ink);}
+  .pricing-band .eyebrow{color:var(--gold);}
+  .pricing-band h2, .pricing-band .section-head p{color:#fff;}
+  .pricing-band .section-head p{color:#B9C2D8;}
+  .price-cards{display:grid;grid-template-columns:1fr 1fr;gap:26px;}
+  @media (max-width:760px){.price-cards{grid-template-columns:1fr;}}
+  .price-card{
+    background:var(--paper);border-radius:var(--radius);padding:30px 26px;position:relative;color:var(--ink);
+  }
+  .price-card .pt{font-family:var(--font-display);font-size:20px;font-weight:700;margin:0 0 2px;}
+  .price-card .ps{font-size:13px;color:var(--slate-light);margin:0 0 18px;}
+  .price-card .amount{font-family:var(--font-display);font-size:30px;font-weight:800;color:var(--ink);margin-bottom:18px;}
+  .price-card .amount small{font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--slate-light);}
+  .price-card ul{list-style:none;margin:0 0 22px;padding:0;display:flex;flex-direction:column;gap:10px;}
+  .price-card li{font-size:14px;display:flex;gap:8px;}
+  .price-card li.no{color:var(--slate-light);}
+  .sticker{
+    position:absolute;top:-14px;right:18px;background:var(--gold);color:var(--ink);
+    font-family:var(--font-display);font-weight:800;font-size:12px;
+    padding:8px 14px;border-radius:999px;transform:rotate(6deg);
+    box-shadow:0 8px 18px -6px rgba(217,164,65,0.7);
+  }
+  .price-note{font-size:12.5px;color:#93A0BC;text-align:center;margin-top:22px;}
+
+  /* contact */
+  .contact-band{background:var(--paper);}
+  .contact-inner{
+    background:var(--white);border:1px solid var(--paper-line);border-radius:var(--radius);
+    padding:44px 34px;text-align:center;
+  }
+  .contact-inner h2{margin-bottom:8px;}
+  .contact-inner p{max-width:52ch;margin:0 auto 26px;}
+  .contact-btns{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;}
+
+  /* footer */
+  footer{background:var(--ink);color:#B9C2D8;padding:34px 0;}
+  .footer-inner{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;font-size:13px;}
+  .footer-inner a{text-decoration:none;color:#D9DEEA;}
+  .footer-links{display:flex;gap:18px;}
+
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto;}
+    .btn{transition:none;}
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="#top">PSB School <span>Management</span></a>
+    <nav class="nav-links" id="navLinks">
+      <a href="#top">होम</a>
+      <a href="#features">Features</a>
+      <a href="#pricing">Plans</a>
+      <a href="#contact">संपर्क</a>
+      <a href="teacher-app.html" class="btn btn-red" style="margin-top:8px;">Teacher Login</a>
+      <a href="student-app.html" class="btn btn-outline" style="margin-top:8px;">Student Result</a>
+      <a href="headmaster-app.html" class="btn btn-outline" style="margin-top:8px;">Headmaster Login</a>
+    </nav>
+    <button class="hamburger" id="hamburgerBtn" aria-label="Menu">☰</button>
+  </div>
+</header>
+
+<section class="hero" id="top">
+  <div class="hero-inner">
+    <div>
+      <p class="eyebrow">Teacher, Student और Headmaster — तीनों के लिए</p>
+      <h1>पूरे School का हर काम — एक ही School Management App में</h1>
+      <p class="lead">PSB School Management App एक Complete School Management Software है। Teachers Question Paper, Notes, Mark Sheet, Admit/ID Card बना सकते हैं और Timetable-Attendance संभाल सकते हैं। Students अपना Result देख सकते हैं, रोज़ Daily Quiz खेलकर Streak बना सकते हैं। और अब Headmaster भी अपने पूरे School के Teachers, Students, Attendance, Result और Fees का Overview एक ही जगह से देख सकते हैं — सब मोबाइल से, बिना Computer गए।</p>
+      <div class="hero-ctas">
+        <a href="teacher-app.html" class="btn btn-red">Teacher Login →</a>
+        <a href="student-app.html" class="btn btn-outline">Student अपना Result देखें</a>
+        <a href="headmaster-app.html" class="btn btn-outline">🏫 Headmaster Login</a>
+        <a href="teacher-app.html" class="btn btn-outline" style="border-color:#1e8e5a;color:#1e8e5a;">📲 App Download करें</a>
+      </div>
+      <p style="font-size:12px;color:#7A88A3;margin-top:8px;">"App Download करें" पर Teacher App खुलेगा — वहाँ ऊपर "📲 App Install करें" बटन से एक टैप में अपने Phone/Desktop पर Install हो जाएगा (iPhone पर Safari के Share Button से "Add to Home Screen" चुनें)।</p>
+    </div>
+    <div class="stamp-card">
+      <div class="sc-head">मार्कशीट <span style="color:#7A88A3;font-size:11px;">SAMPLE</span></div>
+      <div class="sc-row"><span>रोल नंबर</span><b>07</b></div>
+      <div class="sc-row"><span>नाम</span><b>राहुल कुमार</b></div>
+      <div class="sc-row"><span>कक्षा</span><b>10वीं — B</b></div>
+      <div class="sc-row"><span>कुल अंक</span><b>486 / 500</b></div>
+      <div class="sc-row"><span>परिणाम</span><b>PASS</b></div>
+      <div class="stamp-mark">PASS ✓</div>
+    </div>
+  </div>
+</section>
+
+<section id="services">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">हमारी सेवाएं</p>
+      <h2>एक Login, स्कूल का सारा काम</h2>
+      <p>PSB School Management App में Teachers, Students और Headmaster — तीनों के लिए अलग-अलग बना हुआ System है — हर किसी को वही मिलता है जिसकी उसे ज़रूरत है।</p>
+    </div>
+    <div class="cards-2">
+      <div class="page-card">
+        <div class="pc-icon">📘</div>
+        <h3>Teacher App</h3>
+        <p class="pc-desc">रोज़ के कागज़-कलम वाले काम को डिजिटल में बदलें</p>
+        <ul>
+          <li>✍️ Paper, Notes, Mark Sheet, Test Result — सब Rich Text Editor और LaTeX फॉर्मूला के साथ</li>
+          <li>🪪 Admit Card / ID Card — 8-8 Theme, पूरी Class के एक साथ</li>
+          <li>🗓️ Timetable और ✅ Quick Attendance से Class संभालें</li>
+          <li>🖨️ बिना Ad का Print, या सीधा WhatsApp पर Share</li>
+        </ul>
+        <a href="#features" class="card-more">Teacher App की पूरी सूची देखें ↓</a>
+      </div>
+      <div class="page-card">
+        <div class="pc-icon">🎓</div>
+        <h3>Student App</h3>
+        <p class="pc-desc">Result देखने से लेकर रोज़ की पढ़ाई तक, एक ही जगह</p>
+        <ul>
+          <li>🔎 Test Result और Mark Sheet तुरंत चेक करें</li>
+          <li>🔥 Daily Quiz खेलें, Streak और Badge कमाएं</li>
+          <li>❓ Doubt Forum में सवाल पूछें — पूरी तरह सुरक्षित तरीके से</li>
+          <li>🧮 Percentage/GPA Calculator जैसे रोज़ काम के Tools</li>
+        </ul>
+        <a href="#features" class="card-more">Student App की पूरी सूची देखें ↓</a>
+      </div>
+      <div class="page-card">
+        <div class="pc-icon">🏫</div>
+        <h3>Headmaster App</h3>
+        <p class="pc-desc">पूरे School का Overview, एक ही Screen पर</p>
+        <ul>
+          <li>👩‍🏫 School के सभी Teachers और 🧑‍🎓 Students की पूरी List</li>
+          <li>📢 पूरे School के Teachers को एक साथ Notice भेजें</li>
+          <li>📊 Attendance % और Test Result का Class-wise Summary</li>
+          <li>💰 Fee Collection का पूरे School का Overview</li>
+        </ul>
+        <a href="#features" class="card-more">Headmaster App की पूरी सूची देखें ↓</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="features-band" id="features">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">पूरी सूची</p>
+      <h2>App के अंदर क्या-क्या मिलता है</h2>
+      <p>नीचे Teacher App, Student App और Headmaster App — तीनों के हर Feature की पूरी जानकारी है — जो जिस काम आए, वहां से सीधे App खोल सकते हैं।</p>
+    </div>
+
+    <!-- ============ TEACHER APP TRACK ============ -->
+    <div class="app-track">
+      <div class="track-head">
+        <div class="track-stamp">📘</div>
+        <div>
+          <h3>Teacher App</h3>
+          <p>Paper बनाने से लेकर Class संभालने तक</p>
+        </div>
+      </div>
+
+      <p class="feature-group-label">बनाना और Print करना</p>
+      <div class="feature-grid">
+        <div class="feature-tile"><div class="ft-icon">✍️</div><h4>Question Paper</h4><p>Rich Text Editor — Bold, Color, Size, तस्वीरें और गणितीय फॉर्मूला (LaTeX) तक शामिल।</p></div>
+        <div class="feature-tile"><div class="ft-icon">🗒️</div><h4>Notes</h4><p>Paper से अलग, अपने खुद के Notes बनाएं और सुरक्षित Save रखें।</p></div>
+        <div class="feature-tile"><div class="ft-icon">📊</div><h4>Mark Sheet</h4><p>विषय जोड़ें, अंक भरें — Total और Result अपने-आप बन जाए।</p></div>
+        <div class="feature-tile"><div class="ft-icon">📝</div><h4>Test Result</h4><p>पहले Session में Save करें, तैयार होने पर एक क्लिक में Publish करें।</p></div>
+        <div class="feature-tile"><div class="ft-icon">🪪</div><h4>Admit / ID Card</h4><p>8-8 Theme में से चुनें, फोटो-Roll No.-Father Name सब भरें — पूरी Class के Card एक साथ।</p></div>
+        <div class="feature-tile"><div class="ft-icon">🖨️</div><h4>साफ़ Print</h4><p>बिना किसी Ad के, और पेपर जितने Page का उतने ही Page का Print — कोई खाली Extra Page नहीं।</p></div>
+        <div class="feature-tile"><div class="ft-icon">📤</div><h4>असली PDF Share</h4><p>सिर्फ Text नहीं — पूरी बनी हुई PDF सीधा WhatsApp या किसी भी App पर भेजें।</p></div>
+        <div class="feature-tile"><div class="ft-icon">💬</div><h4>क्लास को एक साथ भेजें</h4><p>Result बनते ही एक बटन दबाकर पूरी Class को WhatsApp पर सूचना भेज दें।</p></div>
+      </div>
+
+      <p class="feature-group-label">Class को संभालना</p>
+      <div class="feature-grid">
+        <div class="feature-tile"><div class="ft-icon">🗓️</div><h4>Timetable</h4><p>हर Class का अलग Grid बनाएं, Period का समय तय करें, Print करें।</p></div>
+        <div class="feature-tile"><div class="ft-icon">✅</div><h4>Quick Attendance</h4><p>एक टैप में हर बच्चे को Present/Absent करें, पुरानी तारीखों की History भी देखें।</p></div>
+        <div class="feature-tile"><div class="ft-icon">👥</div><h4>Student Roster</h4><p>Class के बच्चों की पूरी जानकारी और Fee Tracking एक जगह।</p></div>
+        <div class="feature-tile"><div class="ft-icon">📁</div><h4>पूरी History</h4><p>बनाया हुआ हर Paper, Note, Mark Sheet, Result और Card कभी भी वापस देखें।</p></div>
+      </div>
+
+      <p class="feature-group-label">पहचान और सुविधा</p>
+      <div class="feature-grid">
+        <div class="feature-tile"><div class="ft-icon">🖼️</div><h4>School Logo</h4><p>एक बार Upload करें — हर Print में School के नाम के साथ अपने-आप लग जाए।</p></div>
+        <div class="feature-tile"><div class="ft-icon">📢</div><h4>ज़रूरी सूचनाएं</h4><p>Admin की भेजी सूचना सीधा App में दिखे — कहीं और देखने की ज़रूरत नहीं।</p></div>
+        <div class="feature-tile"><div class="ft-icon">🌟</div><h4>Ambassador Badge</h4><p>दोस्तों को App से जोड़ें — 3+ Referral पर "Verified Ambassador" का बैज मिले।</p></div>
+        <div class="feature-tile"><div class="ft-icon">🌙</div><h4>Dark / Light Theme</h4><p>अपनी पसंद के हिसाब से रात या दिन वाला Look चुनें।</p></div>
+      </div>
+    </div>
+
+    <!-- ============ STUDENT APP TRACK ============ -->
+    <div class="app-track app-track-gold">
+      <div class="track-head">
+        <div class="track-stamp">🎓</div>
+        <div>
+          <h3>Student App</h3>
+          <p>Result देखने से लेकर रोज़ की पढ़ाई तक</p>
+        </div>
+      </div>
+
+      <p class="feature-group-label">अपना Result देखें</p>
+      <div class="feature-grid">
+        <div class="feature-tile"><div class="ft-icon">🔎</div><h4>Test Result चेक करें</h4><p>Teacher का Registration Number, Class और Section डालकर तुरंत Result देखें।</p></div>
+        <div class="feature-tile"><div class="ft-icon">📝</div><h4>Mark Sheet चेक करें</h4><p>Roll Number और Class डालकर अपनी पूरी Mark Sheet देखें।</p></div>
+        <div class="feature-tile"><div class="ft-icon">📤</div><h4>PDF या WhatsApp पर भेजें</h4><p>अपना Result असली PDF की तरह Save करें, या एक टैप में WhatsApp पर Share करें।</p></div>
+        <div class="feature-tile"><div class="ft-icon">📢</div><h4>ज़रूरी सूचनाएं</h4><p>Teacher या Admin की भेजी सूचना यहीं मिल जाए।</p></div>
+      </div>
+
+      <p class="feature-group-label">रोज़ खेलें और सीखें</p>
+      <div class="feature-grid">
+        <div class="feature-tile"><div class="ft-icon">🔥</div><h4>Daily Quiz</h4><p>रोज़ 5 नए सवाल हल करें और अपनी Streak आगे बढ़ाएं।</p></div>
+        <div class="feature-tile"><div class="ft-icon">🏆</div><h4>Leaderboard</h4><p>सबसे ज़्यादा Streak और Points वाले Students टॉप पर दिखें।</p></div>
+        <div class="feature-tile"><div class="ft-icon">🎖️</div><h4>Streak Badges</h4><p>3, 7, 15, 30 और 100 दिन की Streak पर खास Badge कमाएं।</p></div>
+        <div class="feature-tile"><div class="ft-icon">❓</div><h4>Doubt Forum</h4><p>अपना सवाल पूछें, दूसरे Students जवाब दें — असली नाम कभी नहीं दिखता, पूरी तरह सुरक्षित।</p></div>
+        <div class="feature-tile"><div class="ft-icon">📸</div><h4>आज के सवाल का Card</h4><p>रोज़ के सवाल का सुंदर Card बनाकर WhatsApp Status पर लगाएं।</p></div>
+      </div>
+
+      <p class="feature-group-label">काम के Tools</p>
+      <div class="feature-grid">
+        <div class="feature-tile"><div class="ft-icon">🧮</div><h4>Percentage Calculator</h4><p>प्राप्त अंक डालें, तुरंत Percentage और Grade पाएं।</p></div>
+        <div class="feature-tile"><div class="ft-icon">🎓</div><h4>GPA Calculator</h4><p>हर विषय का Grade चुनकर अपना GPA निकालें।</p></div>
+        <div class="feature-tile"><div class="ft-icon">📊</div><h4>Progress Report</h4><p>इस हफ्ते कितने Quiz खेले, कितने Result चेक किए — खुद देखें।</p></div>
+        <div class="feature-tile"><div class="ft-icon">🎁</div><h4>Refer और Ad-Free पाएं</h4><p>3 दोस्तों को जोड़ें, 7 दिन का Ad-Free अनुभव पाएं।</p></div>
+        <div class="feature-tile"><div class="ft-icon">🌙</div><h4>Dark / Light Theme</h4><p>अपनी पसंद के हिसाब से रात या दिन वाला Look चुनें।</p></div>
+      </div>
+    </div>
+
+    <!-- ============ HEADMASTER APP TRACK ============ -->
+    <div class="app-track">
+      <div class="track-head">
+        <div class="track-stamp">🏫</div>
+        <div>
+          <h3>Headmaster App</h3>
+          <p>पूरे School का Overview और Control, एक ही जगह से</p>
+        </div>
+      </div>
+
+      <p class="feature-group-label">School का Overview</p>
+      <div class="feature-grid">
+        <div class="feature-tile"><div class="ft-icon">📊</div><h4>Dashboard Overview</h4><p>कुल Teachers, Students, भेजी गई Notices और बाकी Fee — एक नज़र में।</p></div>
+        <div class="feature-tile"><div class="ft-icon">🔑</div><h4>अपना अलग Login</h4><p>हर Headmaster का अपना Mobile+Password Account — School के DISE Code से Teachers अपने-आप जुड़ जाते हैं।</p></div>
+      </div>
+
+      <p class="feature-group-label">Staff और Students संभालना</p>
+      <div class="feature-grid">
+        <div class="feature-tile"><div class="ft-icon">👩‍🏫</div><h4>Teachers की पूरी List</h4><p>School के सभी Teachers, उनका Plan और Status देखें, ज़रूरत पड़ने पर Suspend/Unsuspend करें।</p></div>
+        <div class="feature-tile"><div class="ft-icon">🧑‍🎓</div><h4>Students Overview</h4><p>School के सभी Teachers के सभी Students — Class और Teacher से Search/Filter करें।</p></div>
+        <div class="feature-tile"><div class="ft-icon">📢</div><h4>पूरे School को Notice</h4><p>एक क्लिक में सभी Teachers को Notice भेजें — सीधे उनके Teacher App में दिखे।</p></div>
+      </div>
+
+      <p class="feature-group-label">Academics और Fees</p>
+      <div class="feature-grid">
+        <div class="feature-tile"><div class="ft-icon">📅</div><h4>Attendance Summary</h4><p>किसी भी तारीख का पूरे School का Class-wise Attendance % देखें।</p></div>
+        <div class="feature-tile"><div class="ft-icon">🧮</div><h4>Result Summary</h4><p>Class-wise Average Percentage और Pass Rate — Test Result Data से अपने-आप बनता है।</p></div>
+        <div class="feature-tile"><div class="ft-icon">💰</div><h4>Fees Overview</h4><p>कुल/जमा/बाकी Fee और सबसे पुरानी Due Date वाले Students सबसे ऊपर।</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="background:var(--ink);padding:52px 0;">
+  <div class="wrap" style="text-align:center;">
+    <h2 style="color:#fff;margin:0 0 10px;font-size:clamp(20px,2.6vw,28px);">तैयार हैं? अपना App खोलें</h2>
+    <p style="color:#B9C2D8;margin:0 0 26px;">आप जो भी हों, एक क्लिक में सही जगह पहुंच जाएंगे।</p>
+    <div class="contact-btns">
+      <a href="teacher-app.html" class="btn btn-red">📘 Teacher App खोलें</a>
+      <a href="student-app.html" class="btn btn-outline">🎓 Student App खोलें</a>
+      <a href="headmaster-app.html" class="btn btn-outline">🏫 Headmaster App खोलें</a>
+    </div>
+  </div>
+</section>
+
+<section class="pricing-band" id="pricing">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Plans</p>
+      <h2>ज़रूरत के हिसाब से Plan चुनें</h2>
+      <p>छोटे इस्तेमाल के लिए Free Plan काफ़ी है — रोज़ाना, बिना रुकावट काम के लिए Premium लें।</p>
+    </div>
+    <div class="price-cards">
+      <div class="price-card">
+        <p class="pt">Free</p>
+        <p class="ps">शुरुआत करने के लिए</p>
+        <p class="amount">₹0</p>
+        <ul>
+          <li>✅ शुरुआती मुफ़्त Prints</li>
+          <li>✅ Paper, Notes, Mark Sheet, Test Result, Admit/ID Card — सभी Features उपलब्ध</li>
+          <li class="no">✕ Print पर Watermark आएगा</li>
+          <li class="no">✕ Ads के साथ अनुभव</li>
+        </ul>
+        <a href="teacher-app.html" class="btn btn-ink" style="width:100%;justify-content:center;">मुफ़्त शुरू करें</a>
+      </div>
+      <div class="price-card">
+        <span class="sticker">⭐ पसंदीदा</span>
+        <p class="pt">Premium</p>
+        <p class="ps">बिना रुकावट रोज़ के काम के लिए</p>
+        <p class="amount">देखें ऐप में <small>*</small></p>
+        <ul>
+          <li>✅ Unlimited Print — Paper, Notes, Mark Sheet, Result, Card</li>
+          <li>✅ बिना Watermark के Print/Share</li>
+          <li>✅ बिना Ads का अनुभव</li>
+          <li>✅ दोस्तों को Refer कर, Premium मुफ़्त पाएं</li>
+        </ul>
+        <a href="teacher-app.html" class="btn btn-red" style="width:100%;justify-content:center;">Premium देखें</a>
+      </div>
+    </div>
+    <p class="price-note">*सटीक कीमत व अवधि, Login के बाद ऐप के अंदर "Upgrade" Screen में देखें — ज़रूरत के हिसाब से कई Plan उपलब्ध हैं। Student App और Headmaster App हमेशा मुफ़्त हैं — 3 दोस्तों को Refer करने पर Student App में कुछ दिन के लिए Ad-Free भी मिलता है।</p>
+  </div>
+</section>
+
+<section class="contact-band" id="contact">
+  <div class="wrap">
+    <div class="contact-inner">
+      <h2>सवाल है? हमसे जुड़ें</h2>
+      <p>App इस्तेमाल करने में कोई दिक्कत हो, Plan के बारे में जानना हो, या कोई सुझाव देना हो — हमें बताएं। हम Hindi और English दोनों में मदद कर सकते हैं।</p>
+      <div class="contact-btns">
+        <a href="mailto:singhvishvanath69@gmail.com" class="btn btn-ink">✉️ singhvishvanath69@gmail.com</a>
+        <a href="https://wa.me/917566062677" class="btn btn-red">💬 WhatsApp पर लिखें</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap footer-inner">
+    <span>© <span id="yr"></span> PSB School Management App · psbcompany.in</span>
+    <div class="footer-links">
+      <a href="privacy-policy.html">गोपनीयता नीति</a>
+      <a href="terms.html">नियम व शर्तें</a>
+      <a href="refund-policy.html">रिफंड नीति</a>
+      <a href="contact.html">संपर्क करें</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.getElementById("yr").textContent = new Date().getFullYear();
+  const hamburgerBtn = document.getElementById("hamburgerBtn");
+  const navLinks = document.getElementById("navLinks");
+  hamburgerBtn.addEventListener("click", () => navLinks.classList.toggle("open"));
+  navLinks.querySelectorAll("a").forEach(a => a.addEventListener("click", () => navLinks.classList.remove("open")));
+</script>
+
+</body>
+</html>

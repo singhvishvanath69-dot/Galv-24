@@ -1,0 +1,1983 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PSB Headmaster - School Overview &amp; Management</title>
+<!-- [App Install/PWA] Browser में "Install" का Option दिखाने के लिए -->
+<link rel="manifest" href="headmaster-manifest.json">
+<meta name="theme-color" content="#1e4d8c">
+<link rel="apple-touch-icon" href="icon-headmaster-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PSB Headmaster">
+<!-- [Premium Payment] Cashfree Payment Gateway SDK — Teacher App जैसे ही, सीधे इसी पेज में Embed -->
+<script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+
+<!--
+  ============================================================================
+  PSB HEADMASTER APP — पहला Version (v1)
+  ============================================================================
+  यह ऐप PSB Teacher App और PSB Admin App जैसे ही Firebase Project और उसी Data
+  (teachers, students, testResults, attendance, announcements collections) पर
+  काम करता है — कोई नया Firebase Setup नहीं करना पड़ा।
+
+  ---- स्कूल की पहचान कैसे होती है? ----
+  Teacher App में हर "School Teacher" अपने Registration के वक्त अपने School का
+  DISE Code डालता है। इसी DISE Code को यहाँ "स्कूल की पहचान" (School ID) की तरह
+  इस्तेमाल किया गया है — यानी एक Headmaster अपने Account में जो DISE Code डालेगा,
+  उसी DISE Code वाले सभी Teachers अपने-आप उसके "स्कूल के स्टाफ" में गिने जाएंगे।
+  इसीलिए जब भी किसी Teacher को अपने Headmaster के अंडर दिखना हो, उसे Register
+  करते वक्त वही DISE Code डालना होगा जो Headmaster अपने Account में इस्तेमाल कर
+  रहा है (यह DISE Code "School Profile" स्क्रीन में दिखेगा, वहाँ से कॉपी करके
+  Teachers को Share किया जा सकता है)। "Coaching Teacher" (जिनका कोई DISE Code
+  नहीं होता) इस ऐप में नहीं दिखेंगे — यह ऐप सिर्फ School के लिए है।
+
+  ---- यहाँ से क्या-क्या होता है (v1 Features) ----
+  1) Overview          — कुल Teachers/Students, Notices, बाकी Fee वगैरह
+  2) Teachers          — अपने स्कूल के सभी Teachers की List + Suspend/Unsuspend
+  3) Students          — अपने स्कूल के सभी Teachers के सभी Students, Search/Filter
+  4) Notices           — पूरे स्कूल के Teachers को Notice भेजना (Teacher App के
+                          मौजूदा "announcements" Collection के targetTeacherRegNos
+                          Field का इस्तेमाल करके — इसलिए Teacher App में कोई भी
+                          बदलाव करने की ज़रूरत नहीं पड़ी, वह पहले से यह Support
+                          करता है)
+  5) Attendance/Result — पूरे स्कूल का Attendance % और Test Result Summary
+  6) Fees              — पूरे स्कूल की Fee Collection का Overview (सिर्फ देखने के
+                          लिए — Fee Add/Edit अभी भी Teacher App से ही होता है)
+  7) School Profile    — Headmaster अपनी जानकारी Edit कर सकता है, DISE Code
+                          (Teachers से Share करने के लिए) यहीं दिखता है
+
+  ---- जो अभी शामिल नहीं है (आगे बढ़ाया जा सकता है) ----
+  - reCAPTCHA (Teacher App में भी अभी सिर्फ Placeholder Site Key है)
+  - Headmaster सीधे नया Teacher Account नहीं बना सकता (Firebase Auth Account
+    सिर्फ खुद User बना सकता है) — इसकी जगह ऊपर बताया गया DISE Code तरीका है
+  - Forgot Password — फिलहाल सिर्फ एक Request Firestore में Save होती है
+    (headmasterPasswordRequests collection); इसे Admin App में देखकर Manually
+    Reset करना पड़ेगा (जैसे Teacher App के Password Reset Requests होते हैं)
+  ============================================================================
+-->
+
+<style>
+  :root{
+    --primary:#1e4d8c;
+    --primary-dark:#123a6b;
+    --accent:#ff8c00;
+    --bg:#f2f5fa;
+    --card:#ffffff;
+    --border:#d6dde8;
+    --danger:#d9364a;
+    --success:#1e8e5a;
+    --text:#1b2430;
+  }
+  html[data-theme="dark"]{
+    --primary:#5b9bdb;
+    --primary-dark:#4682c4;
+    --accent:#ffab4d;
+    --bg:#0f1720;
+    --card:#1a2432;
+    --border:#2c3a4d;
+    --danger:#ff6b7a;
+    --success:#3ecf8e;
+    --text:#e8edf5;
+  }
+  html[data-theme="dark"] body{background:var(--bg);color:var(--text);}
+  html[data-theme="dark"] input, html[data-theme="dark"] select, html[data-theme="dark"] textarea{
+    background:#0f1720;color:var(--text);border-color:var(--border);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);padding-bottom:24px;}
+  .topbar{background:linear-gradient(120deg,var(--primary-dark),var(--primary) 55%,#2a63b7);color:#fff;padding:14px 22px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;box-shadow:0 3px 10px rgba(18,58,107,.25);position:sticky;top:0;z-index:50;}
+  .topbar h1{margin:0;font-size:20px;letter-spacing:.3px;display:flex;align-items:center;gap:8px;}
+  .topbar h1 .brand-badge{background:var(--accent);color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:.5px;}
+  .topbar .who{font-size:13px;opacity:.92;}
+  #globalErrorBanner{
+    position:fixed;top:0;left:0;right:0;z-index:9999;
+    background:#fde8ea;color:var(--danger);border-bottom:2px solid var(--danger);
+    padding:10px 40px 10px 14px;font-size:13px;font-weight:600;
+    max-height:40vh;overflow-y:auto;white-space:pre-wrap;
+  }
+  #globalErrorBanner .geb-close{position:absolute;top:6px;right:10px;cursor:pointer;font-weight:800;color:var(--danger);background:none;border:none;font-size:16px;}
+  .app-blocked-wrap{max-width:480px;margin:80px auto;text-align:center;padding:0 16px;}
+  .app-blocked-wrap .icon{font-size:54px;}
+  .btn{cursor:pointer;border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:600;transition:.15s;}
+  .btn-primary{background:var(--primary);color:#fff;}
+  .btn-primary:hover{background:var(--primary-dark);}
+  .btn-accent{background:var(--accent);color:#fff;}
+  .btn-outline{background:#fff;color:var(--primary);border:1px solid var(--primary);}
+  html[data-theme="dark"] .btn-outline{background:transparent;}
+  .btn-danger{background:var(--danger);color:#fff;}
+  .btn-success{background:var(--success);color:#fff;}
+  .btn-sm{padding:6px 10px;font-size:12px;border-radius:6px;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .screen{display:none;max-width:1000px;margin:20px auto;padding:0 16px;}
+  .screen.active{display:block;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 2px 6px rgba(0,0,0,.04);}
+  .center-card{max-width:440px;margin:50px auto;}
+  label{display:block;font-size:13px;font-weight:600;margin:10px 0 4px;color:#3a4658;}
+  html[data-theme="dark"] label{color:#c3cee0;}
+  input[type=text],input[type=password],input[type=number],input[type=date],select,textarea{
+    width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:#fbfcfe;color:var(--text);
+  }
+  html[data-theme="dark"] input,html[data-theme="dark"] select,html[data-theme="dark"] textarea{background:#0f1720;}
+  textarea{resize:vertical;min-height:70px;}
+  .row{display:flex;gap:10px;flex-wrap:wrap;}
+  .row > *{flex:1;min-width:150px;}
+  .back-link{display:inline-block;margin-bottom:14px;color:var(--primary);cursor:pointer;font-weight:600;font-size:14px;}
+  .back-link:hover{text-decoration:underline;}
+  .msg{padding:10px 14px;border-radius:8px;font-size:13px;margin:10px 0;}
+  .msg-error{background:#fde8ea;color:var(--danger);border:1px solid #f7c3ca;}
+  .msg-success{background:#e6f6ee;color:var(--success);border:1px solid #b9e6cf;}
+  .msg-info{background:#eaf1fb;color:var(--primary-dark);border:1px solid #cfdff5;}
+  .section-title{margin:0 0 10px;color:var(--primary-dark);font-size:16px;border-bottom:2px solid var(--border);padding-bottom:8px;}
+  .footer-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap;}
+  .link-btn{background:none;border:none;color:var(--primary);cursor:pointer;font-weight:600;font-size:13px;padding:4px 0;text-align:left;}
+  .link-btn:hover{text-decoration:underline;}
+  .status-pill{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;}
+  .status-pill.open{background:#e6f6ee;color:var(--success);}
+  .status-pill.closed{background:#fde8ea;color:var(--danger);}
+  .divider-or{display:flex;align-items:center;gap:10px;color:#8892a0;font-size:12px;margin:12px 0;}
+  .divider-or::before,.divider-or::after{content:"";flex:1;height:1px;background:var(--border);}
+  .reg-highlight{background:#eaf1fb;border:1px dashed var(--primary);border-radius:8px;padding:10px 14px;font-size:14px;margin:10px 0;}
+
+  /* ---- Dashboard Home: Stat Cards + Nav Grid (Teacher App जैसा ही Look) ---- */
+  .stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 0;}
+  @media (min-width:640px){ .stat-grid{grid-template-columns:repeat(4,1fr);} }
+  .stat-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;}
+  .stat-box .num{font-size:22px;font-weight:800;color:var(--primary-dark);}
+  .stat-box .lbl{font-size:12px;color:#666;margin-top:4px;}
+  html[data-theme="dark"] .stat-box .lbl{color:#9fb0c7;}
+  .dash-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:20px;}
+  @media (min-width:640px){ .dash-grid{grid-template-columns:repeat(3,1fr);gap:16px;} }
+  @media (min-width:960px){ .dash-grid{grid-template-columns:repeat(4,1fr);} }
+  .dash-item{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px 10px;text-align:center;cursor:pointer;transition:.15s;box-shadow:0 2px 8px rgba(18,58,107,.07);}
+  .dash-item:active{transform:scale(0.96);}
+  .dash-item:hover{transform:translateY(-3px);box-shadow:0 6px 14px rgba(30,77,140,.15);border-color:var(--primary);}
+  .dash-item .icon{font-size:30px;margin-bottom:6px;}
+  .dash-item .label{font-weight:700;color:var(--primary-dark);font-size:13.5px;line-height:1.3;}
+  html[data-theme="dark"] .dash-item .label{color:#cfe0f7;}
+
+  /* ---- Tables ---- */
+  table.list-table{width:100%;border-collapse:collapse;font-size:13px;}
+  table.list-table th,table.list-table td{border:1px solid var(--border);padding:8px;text-align:left;}
+  table.list-table th{background:#eef2f9;}
+  html[data-theme="dark"] table.list-table th{background:#20304a;}
+  .table-scroll{overflow-x:auto;}
+
+  /* ---- Tabs (Academics screen: Attendance / Result) ---- */
+  .tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+  .tab-btn{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:#eef2f9;cursor:pointer;font-weight:600;font-size:13px;}
+  html[data-theme="dark"] .tab-btn{background:#20304a;color:var(--text);}
+  .tab-btn.active{background:var(--primary);color:#fff;}
+
+  .hidden{display:none !important;}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px;}
+  .modal-box{background:var(--card);border-radius:12px;padding:20px;max-width:460px;width:100%;max-height:88vh;overflow-y:auto;}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;}
+  .badge-pass{background:#e6f6ee;color:var(--success);}
+  .badge-fail{background:#fde8ea;color:var(--danger);}
+  .badge-ban{background:#fde8ea;color:var(--danger);}
+  .badge-active{background:#e6f6ee;color:var(--success);}
+  .badge-pending{background:#fff3e0;color:#b26a00;}
+  .badge-private{background:#eee;color:#555;}
+
+  .notice-card{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:10px;padding:14px 16px;margin-bottom:12px;}
+  .notice-card h4{margin:0 0 6px;color:var(--primary-dark);font-size:15px;}
+  .notice-card p{margin:0 0 8px;font-size:13.5px;color:#444;}
+  html[data-theme="dark"] .notice-card p{color:#c3cee0;}
+  .notice-card .notice-date{font-size:11px;color:#8892a0;}
+
+  /* ---- Google Sign-in Button (Teacher App जैसा) ---- */
+  .btn-google{background:#fff;color:#3c4043;border:1px solid #d6dde8;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;}
+  .btn-google:hover{background:#f7f9fc;}
+  html[data-theme="dark"] .btn-google{background:#243044;color:#e8edf5;border-color:#2c3a4d;}
+
+  /* ==================================================================
+     [Teacher App जैसा ही] Ad Placement System (Adsterra) — Premium
+     Headmaster को कोई भी नया Ad नहीं दिखेगा, refreshAdVisibility() इसी
+     .psb-ad-slot Class वाले हर Element को एक जगह से दिखा/छुपा देता है।
+     ================================================================== */
+  .psb-ad-slot{margin:14px 0;text-align:center;}
+  .psb-ad-slot-infeed{border:1px dashed var(--border);border-radius:8px;padding:10px;background:#fafbfc;}
+  html[data-theme="dark"] .psb-ad-slot-infeed{background:#152030;}
+  .psb-ad-label{font-size:11px;color:#8892a0;margin-top:4px;}
+  #stickyAdBar{
+    position:fixed;left:0;right:0;bottom:0;z-index:500;
+    background:var(--card);border-top:1px solid var(--border);
+    padding:4px 8px 2px;margin:0;
+    box-shadow:0 -2px 8px rgba(0,0,0,0.08);
+  }
+  /* Sticky bar (728x90) के नीचे छुपने से बचाने के लिए पेज में जगह */
+  body{padding-bottom:100px;}
+</style>
+</head>
+<body>
+<!-- Theme जल्दी Apply करने के लिए (पहले Light दिखकर फिर Dark में बदलने से रोकने के लिए) -->
+<script>
+  (function(){
+    try{
+      const saved = localStorage.getItem("psb_hm_theme");
+      if(saved === "dark") document.documentElement.setAttribute("data-theme", "dark");
+    }catch(e){}
+  })();
+</script>
+
+<div id="globalErrorBanner" class="hidden"></div>
+
+<div class="topbar">
+  <h1>🏫 PSB Headmaster <span class="brand-badge">SCHOOL</span></h1>
+  <div id="topbarUser" class="who"></div>
+  <div id="planStatusPill" class="status-pill hidden" style="cursor:pointer;" onclick="openUpgradeScreen()"></div>
+  <button class="btn btn-accent btn-sm hidden" id="pwaInstallBtn" onclick="triggerPwaInstall()" title="App को Home Screen/Desktop पर Install करें">📲 App Install करें</button>
+  <button class="btn btn-outline btn-sm" id="themeToggleBtn" onclick="toggleTheme()" title="Dark/Light Theme">🌙</button>
+  <button class="btn btn-outline btn-sm hidden" id="logoutBtn" onclick="logoutHeadmaster()">Logout</button>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN: LOADING                                               -->
+<!-- ============================================================ -->
+<div class="screen active" id="screenLoading">
+  <div class="app-blocked-wrap">
+    <p style="color:#888;">लोड हो रहा है...</p>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN: APP DISABLED BY ADMIN                                 -->
+<!-- ============================================================ -->
+<div class="screen" id="screenAppBlocked">
+  <div class="app-blocked-wrap card">
+    <div class="icon">🚫</div>
+    <h2 style="color:var(--danger);">यह ऐप अभी बंद है</h2>
+    <p style="color:#666;">Admin ने PSB Headmaster App को अभी के लिए बंद कर दिया है। कृपया कुछ समय बाद पुनः कोशिश करें।</p>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN: LOGIN                                                 -->
+<!-- ============================================================ -->
+<div class="screen" id="screenLogin">
+  <div class="card center-card">
+    <h2 style="text-align:center;color:var(--primary-dark);">Headmaster Login</h2>
+    <div id="loginMsg"></div>
+    <label>Mobile Number</label>
+    <input type="text" id="loginNumber" placeholder="10 अंकों का मोबाइल नंबर" maxlength="10">
+    <label>Password</label>
+    <input type="password" id="loginPassword" placeholder="Password डालें">
+    <div class="footer-actions" style="justify-content:center;margin-top:16px;">
+      <button class="btn btn-primary" style="width:100%;" onclick="handleLogin()">Login</button>
+    </div>
+    <div class="divider-or">OR</div>
+    <button class="btn btn-google" onclick="loginWithGoogle()">
+      <svg viewBox="0 0 48 48" style="width:18px;height:18px;"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6 29.5 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.4 0 10.3-1.9 14.1-5.3l-6.5-5.5C29.5 34.8 26.9 36 24 36c-5.3 0-9.7-3.3-11.3-8l-6.5 5c3.3 6.5 10 11 17.8 11z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.3-4.1 5.7l6.5 5.5C41.6 35.9 44 30.3 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
+      Login with Google
+    </button>
+    <div style="text-align:center;margin-top:14px;display:flex;flex-direction:column;gap:6px;">
+      <button class="link-btn" style="text-align:center;" onclick="showScreen('screenForgotPassword')">Forgot Password?</button>
+      <button class="btn btn-outline" onclick="openRegisterScreen()">Create Headmaster Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN: CREATE ACCOUNT                                        -->
+<!-- ============================================================ -->
+<div class="screen" id="screenRegister">
+  <div class="card center-card" style="max-width:520px;">
+    <span class="back-link" onclick="showScreen('screenLogin')">&larr; Login पर वापस जाएं</span>
+    <h2 style="text-align:center;color:var(--primary-dark);">Headmaster Account बनाएं</h2>
+    <div id="registerMsg"></div>
+    <button class="btn btn-google" onclick="loginWithGoogle()">
+      <svg viewBox="0 0 48 48" style="width:18px;height:18px;"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6 29.5 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.4 0 10.3-1.9 14.1-5.3l-6.5-5.5C29.5 34.8 26.9 36 24 36c-5.3 0-9.7-3.3-11.3-8l-6.5 5c3.3 6.5 10 11 17.8 11z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.3-4.1 5.7l6.5 5.5C41.6 35.9 44 30.3 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
+      Google से Sign up करें
+    </button>
+    <div class="divider-or">या नीचे जानकारी भरें</div>
+    <label>आपका नाम</label>
+    <input type="text" id="regName" placeholder="Headmaster का नाम">
+    <label>Mobile Number</label>
+    <input type="text" id="regNumber" placeholder="10 अंकों का मोबाइल नंबर" maxlength="10">
+    <label>Email Address</label>
+    <input type="text" id="regEmail" placeholder="आपका ईमेल (Login व Password Reset के लिए ज़रूरी)">
+    <label>Password</label>
+    <input type="password" id="regPassword" placeholder="Password बनाएं (कम से कम 6 अक्षर)">
+    <label>School का नाम</label>
+    <input type="text" id="regSchoolName" placeholder="School का पूरा नाम">
+    <label>School का DISE Code</label>
+    <input type="text" id="regDiseCode" placeholder="जैसे: 12345678901">
+    <div class="msg msg-info" style="margin-top:4px;">⚠️ यही DISE Code अपने Teachers को दें — जब वो PSB Teacher App में "School Teacher" के रूप में यही DISE Code डालकर Register/Update करेंगे, तभी वो आपके इस Headmaster App में दिखेंगे।</div>
+    <label>School का पता</label>
+    <textarea id="regAddress" placeholder="पूरा पता लिखें"></textarea>
+    <label>Referral Code (वैकल्पिक — अगर किसी दोस्त ने बुलाया हो)</label>
+    <input type="text" id="regReferralCode" placeholder="जैसे: HDM123456">
+    <div id="adSlotRegister" class="psb-ad-slot psb-ad-slot-infeed"></div>
+    <div class="footer-actions" style="justify-content:center;margin-top:16px;">
+      <button class="btn btn-primary" style="width:100%;" onclick="handleRegister()">Account बनाएं</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN: REFER TO EARN                                         -->
+<!-- ============================================================ -->
+<div class="screen" id="screenReferEarn">
+  <span class="back-link" onclick="goToDashboard()">&larr; Dashboard पर वापस जाएं</span>
+  <div class="card" style="max-width:560px;">
+    <h3 class="section-title">🎁 Refer to Earn</h3>
+    <p style="font-size:14px;">अपने साथी Headmaster/Principal को <b>PSB Headmaster App</b> से जोड़ें — जैसे ही वो App पर पहला असली काम करेंगे, आपको <b>₹<span id="refEarnAmount"></span></b> का Gift Card मिलेगा!</p>
+    <div class="reg-highlight" style="text-align:center;">
+      <div style="font-size:12px;color:#666;">आपका Referral Code</div>
+      <div style="font-size:22px;font-weight:800;letter-spacing:1px;color:var(--primary-dark);" id="refEarnCode"></div>
+    </div>
+    <div class="footer-actions" style="justify-content:center;">
+      <button class="btn btn-accent" onclick="shareReferralCode()">📤 Link शेयर करें</button>
+    </div>
+    <p style="font-size:12px;color:#8892a0;text-align:center;margin-top:6px;">🎁 आपको गिफ्ट कार्ड WhatsApp की मदद से 24 घंटे में भेज दिया जाएगा (जिस मोबाइल नंबर से आपने Account बनाया है, उसी पर)।</p>
+  </div>
+  <div class="card" style="max-width:560px;">
+    <h3 class="section-title">आपके जोड़े हुए दोस्त</h3>
+    <div id="refEarnListWrap"><p style="color:#8892a0;">लोड हो रहा है...</p></div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN: COMPLETE PROFILE (सिर्फ पहली बार Google से Sign-in करने पर) -->
+<!-- ============================================================ -->
+<div class="screen" id="screenCompleteProfile">
+  <div class="card center-card" style="max-width:520px;">
+    <h2 style="text-align:center;color:var(--primary-dark);">अपनी Profile पूरी करें</h2>
+    <p style="text-align:center;font-size:13px;color:#666;">आपने Google से Sign-in किया है। Headmaster Account बनाने के लिए कृपया नीचे की जानकारी भरें।</p>
+    <div id="cpMsg"></div>
+    <label>आपका नाम</label>
+    <input type="text" id="cpName">
+    <label>Mobile Number</label>
+    <input type="text" id="cpNumber" placeholder="10 अंकों का मोबाइल नंबर" maxlength="10">
+    <label>School का नाम</label>
+    <input type="text" id="cpSchoolName" placeholder="School का पूरा नाम">
+    <label>School का DISE Code</label>
+    <input type="text" id="cpDiseCode" placeholder="जैसे: 12345678901">
+    <div class="msg msg-info" style="margin-top:4px;">⚠️ यही DISE Code अपने Teachers को दें — वो Teacher App में यही DISE Code डालेंगे तभी आपके स्कूल में दिखेंगे।</div>
+    <label>School का पता</label>
+    <textarea id="cpAddress" placeholder="पूरा पता लिखें"></textarea>
+    <label>Referral Code (वैकल्पिक — अगर किसी दोस्त ने बुलाया हो)</label>
+    <input type="text" id="cpReferralCode" placeholder="जैसे: HDM123456">
+    <div class="footer-actions" style="justify-content:center;margin-top:16px;flex-direction:column;">
+      <button class="btn btn-primary" style="width:100%;" onclick="submitCompleteProfile()">Save &amp; Continue</button>
+      <button class="link-btn" style="text-align:center;" onclick="logoutHeadmaster()">रद्द करें / दूसरे Account से Login करें</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN: FORGOT PASSWORD                                       -->
+<!-- ============================================================ -->
+<div class="screen" id="screenForgotPassword">
+  <div class="card center-card">
+    <span class="back-link" onclick="showScreen('screenLogin')">&larr; Login पर वापस जाएं</span>
+    <h2 style="text-align:center;color:var(--primary-dark);">Password भूल गए?</h2>
+    <div id="forgotMsg"></div>
+    <p style="font-size:13.5px;color:#666;">अपना Registered Mobile Number और Email डालें — आपकी Request Admin के पास चली जाएगी, वो जल्द ही आपसे संपर्क करके Password Reset कर देंगे।</p>
+    <label>Mobile Number</label>
+    <input type="text" id="fpNumber" maxlength="10" placeholder="Registered Mobile Number">
+    <label>Email Address</label>
+    <input type="text" id="fpEmail" placeholder="Registered Email">
+    <label>कोई अतिरिक्त जानकारी (वैकल्पिक)</label>
+    <textarea id="fpNote" placeholder="जैसे: School का नाम, DISE Code..."></textarea>
+    <div class="footer-actions" style="justify-content:center;margin-top:16px;">
+      <button class="btn btn-primary" style="width:100%;" onclick="submitForgotPassword()">Request भेजें</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN: BANNED (Admin ने Suspend किया हो)                     -->
+<!-- ============================================================ -->
+<div class="screen" id="screenBanned">
+  <div class="app-blocked-wrap card">
+    <div class="icon">⛔</div>
+    <h2 style="color:var(--danger);">आपका अकाउंट अस्थायी रूप से Suspend है</h2>
+    <p style="color:#666;" id="bannedMessageText"></p>
+    <button class="btn btn-outline btn-sm" onclick="logoutHeadmaster()" style="margin-top:14px;">Logout</button>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN: DASHBOARD (HOME)                                      -->
+<!-- ============================================================ -->
+<div class="screen" id="screenDashboard">
+  <div id="adSlotDashboardTop" class="psb-ad-slot psb-ad-slot-infeed"></div>
+  <div class="card">
+    <h3 class="section-title" id="dashSchoolNameHeading">School Overview</h3>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="num" id="statTeacherCount">-</div><div class="lbl">👩‍🏫 कुल Teachers</div></div>
+      <div class="stat-box"><div class="num" id="statStudentCount">-</div><div class="lbl">🧑‍🎓 कुल Students</div></div>
+      <div class="stat-box"><div class="num" id="statNoticeCount">-</div><div class="lbl">📢 भेजी गई Notices</div></div>
+      <div class="stat-box"><div class="num" id="statFeeDue">-</div><div class="lbl">💰 बाकी Fee (कुल)</div></div>
+    </div>
+  </div>
+  <div class="dash-grid">
+    <div class="dash-item" onclick="openTeachersScreen()"><div class="icon">👩‍🏫</div><div class="label">Teachers</div></div>
+    <div class="dash-item" onclick="openStudentsScreen()"><div class="icon">🧑‍🎓</div><div class="label">Students</div></div>
+    <div class="dash-item" onclick="openNoticesScreen()"><div class="icon">📢</div><div class="label">Notices</div></div>
+    <div class="dash-item" onclick="openAcademicsScreen()"><div class="icon">📊</div><div class="label">Attendance &amp; Result</div></div>
+    <div class="dash-item" onclick="openFeesScreen()"><div class="icon">💰</div><div class="label">Fees Overview</div></div>
+    <div class="dash-item" onclick="openProfileScreen()"><div class="icon">🏫</div><div class="label">School Profile</div></div>
+    <div class="dash-item" onclick="openReferEarnScreen()" style="border-color:#1e8e5a;"><div class="icon">🎁</div><div class="label">Refer to Earn</div></div>
+    <div class="dash-item" onclick="openUpgradeScreen()" style="border-color:var(--accent);"><div class="icon">⭐</div><div class="label">Premium पर Upgrade करें</div></div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN: TEACHERS                                              -->
+<!-- ============================================================ -->
+<div class="screen" id="screenTeachers">
+  <span class="back-link" onclick="goToDashboard()">&larr; Dashboard पर वापस जाएं</span>
+  <div class="card">
+    <h3 class="section-title">अपने School के Teachers</h3>
+    <div id="teachersMsg"></div>
+    <input type="text" id="teachersSearch" placeholder="नाम या Mobile से खोजें..." oninput="renderTeachersList()">
+    <div class="table-scroll" style="margin-top:14px;">
+      <div id="teachersListWrap"></div>
+    </div>
+    <div id="adSlotTeachersBottom" class="psb-ad-slot psb-ad-slot-infeed"></div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN: STUDENTS                                              -->
+<!-- ============================================================ -->
+<div class="screen" id="screenStudents">
+  <span class="back-link" onclick="goToDashboard()">&larr; Dashboard पर वापस जाएं</span>
+  <div class="card">
+    <h3 class="section-title">अपने School के सभी Students</h3>
+    <div id="studentsMsg"></div>
+    <div class="row">
+      <input type="text" id="studentsSearch" placeholder="नाम / Class / Roll No से खोजें..." oninput="renderStudentsList()">
+      <select id="studentsClassFilter" onchange="renderStudentsList()"><option value="">सभी Class</option></select>
+      <select id="studentsTeacherFilter" onchange="renderStudentsList()"><option value="">सभी Teacher</option></select>
+    </div>
+    <div class="table-scroll" style="margin-top:14px;">
+      <div id="studentsListWrap"></div>
+    </div>
+    <div id="adSlotStudentsBottom" class="psb-ad-slot psb-ad-slot-infeed"></div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN: NOTICES                                               -->
+<!-- ============================================================ -->
+<div class="screen" id="screenNotices">
+  <span class="back-link" onclick="goToDashboard()">&larr; Dashboard पर वापस जाएं</span>
+  <div class="card">
+    <h3 class="section-title">नई Notice भेजें (पूरे School के Teachers को)</h3>
+    <div id="noticeSendMsg"></div>
+    <label>Title</label>
+    <input type="text" id="noticeTitle" placeholder="जैसे: कल School बंद रहेगा">
+    <label>Message (वैकल्पिक)</label>
+    <textarea id="noticeMessage" placeholder="पूरी जानकारी लिखें"></textarea>
+    <label>Link (वैकल्पिक)</label>
+    <input type="text" id="noticeLink" placeholder="https://...">
+    <div class="footer-actions">
+      <button class="btn btn-primary" onclick="sendNotice()">📢 Notice भेजें</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3 class="section-title">आपके भेजे हुए Notices</h3>
+    <div id="myNoticesWrap"><p style="color:#8892a0;">लोड हो रहा है...</p></div>
+    <div id="adSlotNoticesBottom" class="psb-ad-slot psb-ad-slot-infeed"></div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN: ACADEMICS (Attendance + Result Summary)               -->
+<!-- ============================================================ -->
+<div class="screen" id="screenAcademics">
+  <span class="back-link" onclick="goToDashboard()">&larr; Dashboard पर वापस जाएं</span>
+  <div class="card">
+    <div class="tabs">
+      <button class="tab-btn active" id="acadTabAttendanceBtn" onclick="switchAcademicsTab('attendance')">📅 Attendance</button>
+      <button class="tab-btn" id="acadTabResultBtn" onclick="switchAcademicsTab('result')">📊 Result Summary</button>
+    </div>
+    <div id="acadAttendancePane">
+      <div class="row">
+        <div><label>तारीख चुनें</label><input type="date" id="acadAttDate" onchange="loadAttendanceSummary()"></div>
+        <div style="display:flex;align-items:flex-end;"><button class="btn btn-outline" style="width:100%;" onclick="loadAttendanceSummary()">Refresh</button></div>
+      </div>
+      <div id="acadAttendanceMsg"></div>
+      <div class="table-scroll" style="margin-top:10px;"><div id="acadAttendanceWrap"></div></div>
+    </div>
+    <div id="acadResultPane" class="hidden">
+      <div id="acadResultMsg"></div>
+      <div class="table-scroll" style="margin-top:10px;"><div id="acadResultWrap"></div></div>
+    </div>
+    <div id="adSlotAcademicsBottom" class="psb-ad-slot psb-ad-slot-infeed"></div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN: FEES OVERVIEW                                         -->
+<!-- ============================================================ -->
+<div class="screen" id="screenFees">
+  <span class="back-link" onclick="goToDashboard()">&larr; Dashboard पर वापस जाएं</span>
+  <div class="card">
+    <h3 class="section-title">School की Fee Collection — Overview</h3>
+    <div class="msg msg-info">यह सिर्फ देखने के लिए है — Fee Add/Update करने का काम Teacher App से ही होता है।</div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="num" id="feeStatTotal">-</div><div class="lbl">कुल तय Fee</div></div>
+      <div class="stat-box"><div class="num" id="feeStatCollected">-</div><div class="lbl">जमा हुई Fee</div></div>
+      <div class="stat-box"><div class="num" id="feeStatDue">-</div><div class="lbl">बाकी Fee</div></div>
+      <div class="stat-box"><div class="num" id="feeStatOverdue">-</div><div class="lbl">Overdue Students</div></div>
+    </div>
+    <h3 class="section-title" style="margin-top:20px;">बाकी Fee वाले Students (सबसे पुरानी Due Date पहले)</h3>
+    <div id="feesMsg"></div>
+    <div class="table-scroll"><div id="feesListWrap"></div></div>
+    <div id="adSlotFeesBottom" class="psb-ad-slot psb-ad-slot-infeed"></div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN: SCHOOL PROFILE                                        -->
+<!-- ============================================================ -->
+<div class="screen" id="screenProfile">
+  <span class="back-link" onclick="goToDashboard()">&larr; Dashboard पर वापस जाएं</span>
+  <div class="card">
+    <h3 class="section-title">School Profile</h3>
+    <div id="profileMsg"></div>
+    <div class="reg-highlight">
+      आपका School DISE Code: <b id="profileDiseCodeDisplay"></b>
+      <button class="btn btn-outline btn-sm" style="margin-left:8px;" onclick="copyDiseCode()">📋 Copy करें</button>
+      <div style="font-size:12px;color:#667;margin-top:6px;">यही Code अपने Teachers को दें ताकि वो आपके स्कूल में जुड़ सकें।</div>
+    </div>
+    <label>आपका नाम</label>
+    <input type="text" id="pfName">
+    <label>Mobile Number</label>
+    <input type="text" id="pfNumber" maxlength="10">
+    <label>School का नाम</label>
+    <input type="text" id="pfSchoolName">
+    <label>School का पता</label>
+    <textarea id="pfAddress"></textarea>
+    <div class="footer-actions">
+      <button class="btn btn-primary" onclick="saveProfile()">Save करें</button>
+    </div>
+    <div id="adSlotProfileBottom" class="psb-ad-slot psb-ad-slot-infeed"></div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- Sticky Bottom Ad Bar (728x90) — Login/Register/Forgot/Banned/App-Blocked पर छुपा रहेगा -->
+<!-- ============================================================ -->
+<div id="stickyAdBar" class="psb-ad-slot"></div>
+
+<!-- ============================================================ -->
+<!-- SCRIPT                                                        -->
+<!-- ============================================================ -->
+<script type="module">
+/* =====================================================================
+   PART 0: FIREBASE INITIALISATION — Teacher/Admin/Student App जैसा ही
+   Firebase Project इस्तेमाल किया गया है (वही Data, कोई नया Setup नहीं)
+   ===================================================================== */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, setDoc, collection, addDoc, getDocs,
+  query, where, updateDoc, deleteDoc, orderBy, onSnapshot, increment
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut,
+  GoogleAuthProvider, signInWithPopup
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+// [Premium Payment] Cashfree Auto-Verify के लिए ज़रूरी — Cloud Functions को सीधे App से Call करने के लिए
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAVccywI4eCzbc1eg6cy2qZaEeYUx0qi2w",
+  authDomain: "chatting-app-2047e.firebaseapp.com",
+  projectId: "chatting-app-2047e",
+  storageBucket: "chatting-app-2047e.firebasestorage.app",
+  messagingSenderId: "641783644815",
+  appId: "1:641783644815:web:9a392923b2213f432ca6fa"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+const cfFunctions = getFunctions(app); // [Premium Payment]
+window.__db = db;
+window.__fs = { doc, getDoc, setDoc, collection, addDoc, getDocs, query, where, updateDoc, deleteDoc, orderBy, onSnapshot, increment };
+
+// [Refer to Earn] ?ref=CODE वाले Link से आए विज़िटर का कोड याद रखें, ताकि फॉर्म में अपने-आप भर जाए
+let capturedReferralCode = "";
+try{ capturedReferralCode = (new URLSearchParams(window.location.search).get("ref") || "").trim().toUpperCase(); }catch(e){}
+
+/* =====================================================================
+   [App Install/PWA] Service Worker और "📲 App Install करें" बटन (Teacher App जैसा ही)
+   ⚠️ iPhone/Safari में यह Event नहीं आता — वहाँ Share बटन से "Add to Home Screen" चुनना होता है।
+   ===================================================================== */
+if("serviceWorker" in navigator){
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("service-worker.js").catch((err) => console.warn("Service Worker:", err.message));
+  });
+}
+let deferredPwaInstallPrompt = null;
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredPwaInstallPrompt = event;
+  document.getElementById("pwaInstallBtn").classList.remove("hidden");
+});
+window.triggerPwaInstall = async function(){
+  if(!deferredPwaInstallPrompt) return;
+  deferredPwaInstallPrompt.prompt();
+  await deferredPwaInstallPrompt.userChoice;
+  deferredPwaInstallPrompt = null;
+  document.getElementById("pwaInstallBtn").classList.add("hidden");
+};
+window.addEventListener("appinstalled", () => {
+  document.getElementById("pwaInstallBtn").classList.add("hidden");
+  deferredPwaInstallPrompt = null;
+});
+
+/* =====================================================================
+   THEME TOGGLE
+   ===================================================================== */
+window.toggleTheme = function(){
+  const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+  if(isDark){
+    document.documentElement.removeAttribute("data-theme");
+    localStorage.setItem("psb_hm_theme", "light");
+  } else {
+    document.documentElement.setAttribute("data-theme", "dark");
+    localStorage.setItem("psb_hm_theme", "dark");
+  }
+  updateThemeToggleIcon();
+};
+function updateThemeToggleIcon(){
+  const btn = document.getElementById("themeToggleBtn");
+  if(!btn) return;
+  btn.textContent = document.documentElement.getAttribute("data-theme") === "dark" ? "☀️" : "🌙";
+}
+updateThemeToggleIcon();
+
+function showGlobalError(message){
+  const banner = document.getElementById("globalErrorBanner");
+  banner.innerHTML = escapeHtml(message) + '<button class="geb-close" onclick="this.parentElement.classList.add(\'hidden\')">✕</button>';
+  banner.classList.remove("hidden");
+}
+
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+window.showScreen = showScreen;
+
+function escapeHtml(str){
+  if(!str) return "";
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+function escapeAttr(str){
+  if(!str) return "";
+  return String(str).replace(/"/g,"&quot;");
+}
+function formatDate(iso){
+  if(!iso) return "-";
+  const d = new Date(iso);
+  return d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+}
+function chunkArray(arr, size){
+  const out = [];
+  for(let i=0;i<arr.length;i+=size) out.push(arr.slice(i, i+size));
+  return out;
+}
+
+// [Premium Payment] सामान्य Modal Helper — Upgrade/Payment जैसी Screens के लिए (जो Student/Edit
+// जैसी खास Modals से अलग, बार-बार नई तरह की सामग्री दिखाती हैं)
+function openModal(html, closable){
+  const existing = document.getElementById("genericModalOverlay");
+  if(existing) existing.remove();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.id = "genericModalOverlay";
+  overlay.innerHTML = `<div class="modal-box">${closable !== false ? '<div style="text-align:right;margin-bottom:6px;"><button class="btn btn-outline btn-sm" onclick="closeModal()">✕ बंद करें</button></div>' : ""}${html}</div>`;
+  document.body.appendChild(overlay);
+}
+window.closeModal = function(){
+  const el = document.getElementById("genericModalOverlay");
+  if(el) el.remove();
+};
+
+/* =====================================================================
+   ADMIN-CONTROLLED APP SETTINGS — same appSettings/global doc जो
+   Teacher/Admin App इस्तेमाल करते हैं, बस एक नया headmasterAppEnabled
+   Field जोड़ा गया है (Doc में न हो तो डिफ़ॉल्ट रूप से चालू माना जाएगा)
+   ===================================================================== */
+let appBootBlocked = false;
+window.__fs.onSnapshot(window.__fs.doc(window.__db, "appSettings", "global"), (snap) => {
+  const data = snap.exists() ? snap.data() : {};
+  const enabled = data.headmasterAppEnabled !== false;
+  if(!enabled){
+    appBootBlocked = true;
+    showScreen("screenAppBlocked");
+  } else if(appBootBlocked){
+    appBootBlocked = false;
+    showScreen(currentHM ? "screenDashboard" : "screenLogin");
+  }
+}, (err) => console.warn("appSettings sync error:", err.message));
+
+/* =====================================================================
+   PART 1: AUTHENTICATION — Teacher App जैसे ही Mobile+Password तरीके से
+   (Firebase Auth असली Email/Password रखता है, Mobile सिर्फ Lookup के लिए)
+   ===================================================================== */
+let currentHM = null; // { regNo, name, number, email, schoolName, diseCode, address, plan, premiumUntil }
+
+/* =====================================================================
+   PART 1b: ADS (Adsterra) — बिल्कुल Teacher App जैसा ही System
+   ---------------------------------------------------------------------
+   ⚠️ ज़रूरी बात: नीचे दिए गए Zone ID/Key वही हैं जो Teacher App में इस्तेमाल
+   होते हैं (एक ही Adsterra Account)। कुछ Ad Networks किसी Zone को सिर्फ़ उसी
+   Domain पर काम करने देते हैं जिस पर उसे Approve किया गया था — अगर यह
+   Headmaster App किसी अलग Domain/Sub-domain पर होस्ट हो, तो एक बार Adsterra
+   के Dashboard में जाकर देख लें कि यह Zone उस Domain पर भी Active है, वरना
+   सिर्फ़ खाली जगह दिखेगी (टूटेगा कुछ नहीं, बस Ad नहीं आएगा)।
+   ===================================================================== */
+const ADSTERRA_POPUNDER_SCRIPT_HTML = `<script src="https://consciousdunkvastly.com/c1/8e/b5/c18eb58411cc2cb5aa20c24d51747c15.js"><\/script>`;
+const ADSTERRA_NATIVE_AD_HTML = `<script async="async" data-cfasync="false" src="https://consciousdunkvastly.com/babe92e8cd8bafd36ff10bec1b1eef45/invoke.js"><\/script>
+<div id="container-babe92e8cd8bafd36ff10bec1b1eef45"></div>`;
+const ADSTERRA_BANNER_320x50_KEY = "bb590076f5633ff07d0ff33fe5b3ae4b";
+const ADSTERRA_BANNER_728x90_KEY = "4754dd1a282721a1979ab9139c7a35da";
+const ADSTERRA_SOCIALBAR_SCRIPT_HTML = `<script src="https://consciousdunkvastly.com/fe/ed/4f/feed4f649c7f66d448e281e7764edbe7.js"><\/script>`;
+
+function injectAdMarkup(container, htmlString){
+  if(!container) return;
+  container.innerHTML = htmlString;
+  Array.from(container.querySelectorAll("script")).forEach(oldScript => {
+    const s = document.createElement("script");
+    Array.from(oldScript.attributes).forEach(attr => s.setAttribute(attr.name, attr.value));
+    if(oldScript.textContent) s.textContent = oldScript.textContent;
+    if(!oldScript.hasAttribute("async")) s.async = false;
+    oldScript.parentNode.replaceChild(s, oldScript);
+  });
+}
+function renderAtOptionsBannerIframe(container, key, width, height){
+  if(!container) return;
+  const html = `<html><body style="margin:0;padding:0;overflow:hidden;">`
+    + `<script>atOptions=${JSON.stringify({key, format:"iframe", height, width, params:{}})};<\/script>`
+    + `<script src="https://consciousdunkvastly.com/${key}/invoke.js"><\/script>`
+    + `</body></html>`;
+  const iframe = document.createElement("iframe");
+  iframe.srcdoc = html;
+  iframe.width = String(width);
+  iframe.height = String(height);
+  iframe.style.border = "0";
+  iframe.style.maxWidth = "100%";
+  iframe.scrolling = "no";
+  container.innerHTML = "";
+  container.appendChild(iframe);
+}
+
+(function initExtraAdSlots(){
+  const dashTop = document.getElementById("adSlotDashboardTop");
+  if(dashTop) injectAdMarkup(dashTop, ADSTERRA_NATIVE_AD_HTML);
+
+  ["adSlotRegister", "adSlotTeachersBottom", "adSlotStudentsBottom", "adSlotNoticesBottom", "adSlotAcademicsBottom", "adSlotFeesBottom", "adSlotProfileBottom"].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) renderAtOptionsBannerIframe(el, ADSTERRA_BANNER_320x50_KEY, 320, 50);
+  });
+
+  const sticky = document.getElementById("stickyAdBar");
+  if(sticky) renderAtOptionsBannerIframe(sticky, ADSTERRA_BANNER_728x90_KEY, 728, 90);
+
+  document.querySelectorAll(".psb-ad-slot").forEach(el => {
+    const label = document.createElement("div");
+    label.className = "psb-ad-label";
+    label.textContent = "Advertisement";
+    el.appendChild(label);
+  });
+})();
+
+let socialBarInjected = false;
+// [Premium Ad Fix — Teacher App जैसे ही] जब तक Firebase यह पक्का न बता दे कि Headmaster
+// Login है या नहीं (और अगर है तो उसका Plan क्या है), तब तक कोई Ad "दिखाया" नहीं जाएगा।
+let authResolved = false;
+function refreshAdVisibility(){
+  const hide = !authResolved || !!(currentHM && isPremium());
+  document.querySelectorAll(".psb-ad-slot").forEach(el => el.classList.toggle("hidden", hide));
+  const activeId = document.querySelector(".screen.active")?.id;
+  const sticky = document.getElementById("stickyAdBar");
+  if(sticky && ["screenLogin","screenRegister","screenForgotPassword","screenCompleteProfile","screenBanned","screenAppBlocked","screenLoading"].includes(activeId)) sticky.classList.add("hidden");
+  refreshSocialBar(hide || !currentHM);
+}
+refreshAdVisibility();
+
+function refreshSocialBar(hide){
+  let wrap = document.getElementById("psbSocialBarSlot");
+  if(hide){
+    if(wrap) wrap.remove();
+    socialBarInjected = false;
+    return;
+  }
+  if(!socialBarInjected){
+    wrap = document.createElement("div");
+    wrap.id = "psbSocialBarSlot";
+    wrap.style.display = "none";
+    document.body.appendChild(wrap);
+    injectAdMarkup(wrap, ADSTERRA_SOCIALBAR_SCRIPT_HTML);
+    socialBarInjected = true;
+  }
+}
+
+function triggerPopunderAd(){
+  if(currentHM && isPremium()) return;
+  try{
+    const old = document.getElementById("psbPopunderScriptSlot");
+    if(old) old.remove();
+    const wrap = document.createElement("div");
+    wrap.id = "psbPopunderScriptSlot";
+    wrap.style.display = "none";
+    document.body.appendChild(wrap);
+    injectAdMarkup(wrap, ADSTERRA_POPUNDER_SCRIPT_HTML);
+  }catch(err){ console.warn("Popunder ad trigger नहीं हो पाया:", err.message); }
+}
+
+/* =====================================================================
+   PART 1c: PREMIUM PLANS + PAYMENT — Teacher App जैसा ही System
+   ---------------------------------------------------------------------
+   Admin App का "Plan Control" वहीं (premiumPlans Collection) है जो Teacher
+   App के लिए इस्तेमाल होता है — यहाँ भी वही Plans, वही QR Code, वही कीमत
+   दिखेगी (एक ही Admin Screen से दोनों Apps का Pricing तय होता है)।
+   ===================================================================== */
+function isPremium(){
+  if(!currentHM || currentHM.plan !== "premium") return false;
+  if(currentHM.premiumUntil){
+    return new Date(currentHM.premiumUntil).getTime() > Date.now();
+  }
+  return true; // premiumUntil खाली मतलब Admin ने हमेशा के लिए मैन्युअली दिया है
+}
+function premiumDaysLeft(){
+  if(!currentHM || !currentHM.premiumUntil) return null;
+  const diffMs = new Date(currentHM.premiumUntil).getTime() - Date.now();
+  return Math.max(0, Math.ceil(diffMs / (1000*60*60*24)));
+}
+
+let premiumPlansList = [];
+window.__fs.onSnapshot(
+  window.__fs.query(window.__fs.collection(window.__db, "premiumPlans"), window.__fs.orderBy("sortOrder", "asc")),
+  (snap) => {
+    premiumPlansList = [];
+    snap.forEach(d => { const p = d.data(); if(p.active !== false) premiumPlansList.push({ id: d.id, ...p }); });
+  },
+  (err) => console.warn("premiumPlans sync error:", err.message)
+);
+
+window.openUpgradeScreen = function(){ showUpgradeModal(); };
+
+function showUpgradeModal(){
+  const daysLeft = premiumDaysLeft();
+  const plansHtml = premiumPlansList.length ? `
+    <div class="row" style="margin:14px 0;flex-wrap:wrap;">
+      ${premiumPlansList.map(p => `
+        <div class="reg-highlight" style="flex:1;min-width:130px;text-align:center;">
+          <div style="font-size:13px;color:#666;">${escapeHtml(p.name)}</div>
+          <div style="font-size:22px;font-weight:800;color:var(--primary-dark);">₹${p.price}</div>
+          <div style="font-size:11px;color:#888;">${p.durationDays} दिन के लिए</div>
+          ${currentHM ? `<button class="btn btn-primary btn-sm" style="margin-top:8px;width:100%;" onclick="startPayment('${p.id}')">Pay &amp; Activate</button>` : ""}
+        </div>
+      `).join("")}
+    </div>
+  ` : `<p style="font-size:13px;color:#888;text-align:center;margin:14px 0;">अभी कोई Premium Plan उपलब्ध नहीं है — कृपया थोड़ी देर बाद कोशिश करें।</p>`;
+
+  openModal(`
+    <h3 class="section-title">⭐ Premium पर Upgrade करें</h3>
+    <p style="font-size:14px;color:#444;">Premium लेकर पाएं:</p>
+    <ul style="font-size:14px;color:#444;line-height:1.7;">
+      <li>✅ पूरी तरह Ad-Free अनुभव</li>
+      <li>✅ बिना किसी रुकावट के School का पूरा Overview</li>
+    </ul>
+    ${plansHtml}
+    ${isPremium() && daysLeft !== null ? `<p style="font-size:12px;color:#666;margin-top:10px;">आपका Premium ${daysLeft} दिन में खत्म होगा।</p>` : ""}
+  `, true);
+}
+
+window.startPayment = function(planId){
+  const plan = premiumPlansList.find(p => p.id === planId);
+  if(!plan || !currentHM) return;
+  const qrSectionHtml = plan.qrImageDataUrl ? `
+    <div style="text-align:center;margin:16px 0;padding:16px;background:#f8fafc;border:1px solid var(--border);border-radius:10px;">
+      <div style="font-size:13px;font-weight:600;color:#444;margin-bottom:10px;">📱 अपने किसी भी UPI App (Google Pay / PhonePe / Paytm) से यह QR Scan करें</div>
+      <img src="${escapeAttr(plan.qrImageDataUrl)}" style="width:190px;height:190px;object-fit:contain;border:1px solid var(--border);border-radius:8px;background:#fff;">
+      <div style="font-size:24px;font-weight:800;color:var(--primary-dark);margin-top:10px;">₹${plan.price} भेजें</div>
+      <div style="font-size:11.5px;color:#8892a0;margin-top:2px;">(${escapeHtml(plan.name)} — ${plan.durationDays || 30} दिन के लिए)</div>
+    </div>
+    <label>Payment करने के बाद अपना UTR Number डालें (ज़रूरी)</label>
+    <input type="text" id="qrUtrInput" placeholder="जैसे: 123456789012">
+    <div id="qrUtrMsg"></div>
+    <div class="footer-actions">
+      <button class="btn btn-primary" style="width:100%;" onclick="submitQrPaymentProof('${plan.id}')">✅ Payment Request भेजें</button>
+    </div>
+    <div class="divider-or">या ऑनलाइन Pay करें</div>
+  ` : "";
+
+  openModal(`
+    <h3>💳 ${escapeHtml(plan.name)} — Payment करें</h3>
+    <div class="row" style="align-items:center;">
+      <div style="flex:1;">
+        <div style="font-weight:700;">${escapeHtml(plan.name)}</div>
+        <div style="font-size:12px;color:#888;">${plan.durationDays || 30} दिन के लिए</div>
+      </div>
+      <div style="font-size:24px;font-weight:800;color:var(--primary-dark);">₹${plan.price}</div>
+    </div>
+    ${qrSectionHtml}
+    <button class="btn ${plan.qrImageDataUrl ? "btn-outline" : "btn-primary"}" id="cfPayBtn" style="width:100%;margin-top:14px;" onclick="initiateCashfreeCheckout('${plan.id}')">🔒 Pay Now with Cashfree</button>
+    <div style="text-align:center;font-size:12px;color:#7c8896;margin-top:8px;">🔒 100% Secure Payments · SSL Encrypted</div>
+    <div id="cfCheckoutMsg"></div>
+    <div id="cfManualConfirmBox" class="hidden">
+      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+      <p style="font-size:14px;color:#444;">हमारा Online Payment Gateway अभी पूरी तरह Setup हो रहा है। तब तक कृपया ऊपर दिखाई राशि किसी और तरीके से Pay करके, यहां अपनी Payment ID डालें — Admin जल्द ही आपका Plan Activate कर देंगे।</p>
+      <label>Payment ID (Payment Screenshot में मिलेगा — ज़रूरी है)</label>
+      <input type="text" id="paymentRefInput" placeholder="जैसे: pay_Q1a2B3c4D5e6F7">
+      <div id="cfManualMsg"></div>
+      <div class="footer-actions">
+        <button class="btn btn-outline btn-sm" onclick="submitPaymentProof('${plan.id}')">Payment Request भेजें</button>
+      </div>
+    </div>
+  `, true);
+};
+
+window.initiateCashfreeCheckout = async function(planId){
+  const plan = premiumPlansList.find(p => p.id === planId);
+  if(!plan || !currentHM) return;
+  const msgBox = document.getElementById("cfCheckoutMsg");
+  const btn = document.getElementById("cfPayBtn");
+  msgBox.innerHTML = '<div class="msg msg-info">Payment शुरू किया जा रहा है...</div>';
+  btn.disabled = true;
+  try{
+    if(typeof Cashfree === "undefined"){
+      throw new Error("Payment Gateway लोड नहीं हो पाया। कृपया इंटरनेट चेक करके दोबारा कोशिश करें।");
+    }
+    const createOrder = httpsCallable(cfFunctions, "createCashfreeOrder");
+    const orderResult = await createOrder({ planId: plan.id, teacherRegNo: currentHM.regNo });
+    const paymentSessionId = orderResult.data.paymentSessionId;
+    if(!paymentSessionId){
+      throw new Error("Payment Gateway अभी पूरी तरह Setup नहीं हुआ (Backend Session ज़रूरी है)");
+    }
+    const cashfree = Cashfree({ mode: "sandbox" });
+    const result = await cashfree.checkout({ paymentSessionId, redirectTarget: "_modal" });
+    if(result.error){ throw new Error(result.error.message); }
+    if(result.paymentDetails){
+      document.getElementById("cfManualConfirmBox").classList.remove("hidden");
+      if(result.paymentDetails.paymentId){
+        document.getElementById("paymentRefInput").value = result.paymentDetails.paymentId;
+      }
+      msgBox.innerHTML = '<div class="msg msg-success">🎉 Payment हो गया! नीचे "Payment Request भेजें" दबाकर पूरा करें — Admin के Accept करते ही Plan Activate होगा।</div>';
+    }
+  }catch(err){
+    msgBox.innerHTML = '<div class="msg msg-info">ऑनलाइन Payment अभी उपलब्ध नहीं है — कृपया नीचे दिए तरीके से Payment Confirm करें।</div>';
+    document.getElementById("cfManualConfirmBox").classList.remove("hidden");
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+window.submitPaymentProof = async function(planId){
+  const plan = premiumPlansList.find(p => p.id === planId);
+  if(!plan || !currentHM) return;
+  const ref = document.getElementById("paymentRefInput").value.trim();
+  const msgBox = document.getElementById("cfManualMsg");
+  if(!ref){
+    msgBox.innerHTML = '<div class="msg msg-error">कृपया अपनी Payment ID डालें</div>';
+    return;
+  }
+  try{
+    await window.__fs.addDoc(window.__fs.collection(window.__db, "paymentRequests"), {
+      teacherRegNo: currentHM.regNo, teacherName: currentHM.name, teacherMobile: currentHM.number,
+      payerType: "headmaster",
+      planId: plan.id, planName: plan.name, price: plan.price, durationDays: plan.durationDays,
+      referenceNote: ref, paymentMethod: "cashfree", status: "pending", createdAt: new Date().toISOString()
+    });
+    document.querySelectorAll(".modal-overlay").forEach(m => m.remove());
+    alert("✅ आपकी Payment Request Admin के पास भेज दी गई है। Admin के Accept करते ही आपका " + plan.name + " Plan Activate हो जाएगा।");
+  }catch(err){
+    showGlobalError("Payment Request भेजने में Error: " + err.message);
+    msgBox.innerHTML = '<div class="msg msg-error">Error: ' + err.message + '</div>';
+  }
+};
+
+window.submitQrPaymentProof = async function(planId){
+  const plan = premiumPlansList.find(p => p.id === planId);
+  if(!plan || !currentHM) return;
+  const utr = document.getElementById("qrUtrInput").value.trim();
+  const msgBox = document.getElementById("qrUtrMsg");
+  if(!utr){
+    msgBox.innerHTML = '<div class="msg msg-error">कृपया अपना UTR Number डालें</div>';
+    return;
+  }
+  try{
+    await window.__fs.addDoc(window.__fs.collection(window.__db, "paymentRequests"), {
+      teacherRegNo: currentHM.regNo, teacherName: currentHM.name, teacherMobile: currentHM.number,
+      payerType: "headmaster",
+      planId: plan.id, planName: plan.name, price: plan.price, durationDays: plan.durationDays,
+      referenceNote: utr, paymentMethod: "qr_manual", status: "pending", createdAt: new Date().toISOString()
+    });
+    document.querySelectorAll(".modal-overlay").forEach(m => m.remove());
+    alert("✅ आपकी Payment Request Admin के पास भेज दी गई है। Admin आपके UTR Number से Payment मिलाकर " + plan.name + " Plan जल्द Activate कर देंगे।");
+  }catch(err){
+    showGlobalError("Payment Request भेजने में Error: " + err.message);
+    msgBox.innerHTML = '<div class="msg msg-error">Error: ' + err.message + '</div>';
+  }
+};
+
+function applyHmPlanStatusUI(){
+  const el = document.getElementById("planStatusPill");
+  if(!el || !currentHM) return;
+  el.classList.remove("hidden");
+  if(isPremium()){
+    el.className = "status-pill open";
+    const daysLeft = premiumDaysLeft();
+    el.textContent = "⭐ Premium" + (daysLeft !== null ? " (" + daysLeft + " दिन बचे)" : "");
+  } else {
+    el.className = "status-pill closed";
+    el.textContent = "🆓 Free";
+  }
+  refreshAdVisibility();
+}
+
+onAuthStateChanged(auth, async (user) => {
+  if(appBootBlocked) return;
+  if(!user){
+    currentHM = null;
+    document.getElementById("topbarUser").textContent = "";
+    document.getElementById("logoutBtn").classList.add("hidden");
+    authResolved = true;
+    refreshAdVisibility();
+    const activeId = document.querySelector(".screen.active")?.id;
+    if(!["screenRegister","screenForgotPassword"].includes(activeId)){
+      if(capturedReferralCode){ openRegisterScreen(); } else { showScreen("screenLogin"); }
+    }
+    return;
+  }
+  try{
+    const profile = await findHeadmasterProfileByUid(user.uid);
+    if(!profile){
+      // Email+Password से Account बनाते वक्त Auth User पहले बन जाता है और Firestore Profile
+      // कुछ पल बाद — उस बीच यह Function चल जाता है। handleRegister खुद आगे संभाल लेगा।
+      if(registrationInProgress) return;
+      // Google से पहली बार आए नए Headmaster को Profile पूरी करने वाली स्क्रीन पर भेजें।
+      authResolved = true;
+      refreshAdVisibility();
+      document.getElementById("cpName").value = user.displayName || "";
+      document.getElementById("cpMsg").innerHTML = "";
+      document.getElementById("cpReferralCode").value = capturedReferralCode || "";
+      showScreen("screenCompleteProfile");
+      return;
+    }
+    if(profile.banned && profile.banUntil && new Date(profile.banUntil) > new Date()){
+      showBannedScreen(profile);
+      return;
+    } else if(profile.banned){
+      await window.__fs.updateDoc(window.__fs.doc(window.__db, "headmasters", profile.regNo), { banned: false, banReason: null, banUntil: null }).catch(()=>{});
+      profile.banned = false;
+    }
+    currentHM = profile;
+    authResolved = true;
+    loginSuccess();
+  }catch(err){
+    authResolved = true;
+    refreshAdVisibility();
+    showGlobalError("Login के बाद Profile लोड करने में Error: " + err.message);
+    showScreen("screenLogin");
+  }
+});
+
+async function findHeadmasterProfileByUid(uid){
+  const q = window.__fs.query(
+    window.__fs.collection(window.__db, "headmasters"),
+    window.__fs.where("authUid", "==", uid)
+  );
+  const snap = await window.__fs.getDocs(q);
+  let found = null;
+  snap.forEach(d => { found = { regNo: d.id, ...d.data() }; });
+  return found;
+}
+
+function showBannedScreen(profile){
+  const until = new Date(profile.banUntil);
+  document.getElementById("bannedMessageText").innerHTML =
+    `<b>तारीख तक Suspend:</b> ${until.toLocaleDateString()}<br><br>` +
+    `<b>कारण:</b> ${escapeHtml(profile.banReason || "कोई कारण नहीं दिया गया")}`;
+  showScreen("screenBanned");
+}
+
+window.logoutHeadmaster = async function(){
+  await signOut(auth);
+  currentHM = null;
+  document.getElementById("planStatusPill").classList.add("hidden");
+  showScreen("screenLogin");
+};
+
+async function findHeadmasterEmailByMobile(number){
+  const q = window.__fs.query(
+    window.__fs.collection(window.__db, "headmasters"),
+    window.__fs.where("number", "==", number)
+  );
+  const snap = await window.__fs.getDocs(q);
+  let email = null;
+  snap.forEach(d => { email = d.data().email; });
+  return email;
+}
+
+window.handleLogin = async function(){
+  const number = document.getElementById("loginNumber").value.trim();
+  const pw = document.getElementById("loginPassword").value;
+  const msgBox = document.getElementById("loginMsg");
+  msgBox.innerHTML = "";
+  if(!/^[0-9]{10}$/.test(number)){
+    msgBox.innerHTML = '<div class="msg msg-error">कृपया सही 10 अंकों का मोबाइल नंबर डालें</div>';
+    return;
+  }
+  if(!pw){
+    msgBox.innerHTML = '<div class="msg msg-error">कृपया Password डालें</div>';
+    return;
+  }
+  try{
+    const email = await findHeadmasterEmailByMobile(number);
+    if(!email){
+      msgBox.innerHTML = '<div class="msg msg-error">इस मोबाइल नंबर से कोई Headmaster Account नहीं मिला। कृपया नया Account बनाएं।</div>';
+      return;
+    }
+    await signInWithEmailAndPassword(auth, email, pw);
+    document.getElementById("loginNumber").value = "";
+    document.getElementById("loginPassword").value = "";
+  }catch(err){
+    if(err.code === "auth/wrong-password" || err.code === "auth/invalid-credential"){
+      msgBox.innerHTML = '<div class="msg msg-error">गलत Password! दोबारा कोशिश करें</div>';
+    } else {
+      msgBox.innerHTML = '<div class="msg msg-error">Error: ' + err.message + '</div>';
+    }
+  }
+};
+
+window.openRegisterScreen = function(){
+  document.getElementById("registerMsg").innerHTML = "";
+  document.getElementById("regName").value = "";
+  document.getElementById("regNumber").value = "";
+  document.getElementById("regEmail").value = "";
+  document.getElementById("regPassword").value = "";
+  document.getElementById("regSchoolName").value = "";
+  document.getElementById("regDiseCode").value = "";
+  document.getElementById("regAddress").value = "";
+  document.getElementById("regReferralCode").value = capturedReferralCode || "";
+  showScreen("screenRegister");
+};
+
+async function generateUniqueHmRegistrationNumber(){
+  for(let attempt=0; attempt<20; attempt++){
+    const candidate = "HDM" + Math.floor(100000 + Math.random() * 900000);
+    const snap = await window.__fs.getDoc(window.__fs.doc(window.__db, "headmasters", candidate));
+    if(!snap.exists()) return candidate;
+  }
+  throw new Error("Registration Number generate नहीं हो पाया, दोबारा कोशिश करें");
+}
+
+window.handleRegister = async function(){
+  const msgBox = document.getElementById("registerMsg");
+  const name = document.getElementById("regName").value.trim();
+  const number = document.getElementById("regNumber").value.trim();
+  const email = document.getElementById("regEmail").value.trim();
+  const password = document.getElementById("regPassword").value;
+  const schoolName = document.getElementById("regSchoolName").value.trim();
+  const diseCode = document.getElementById("regDiseCode").value.trim();
+  const address = document.getElementById("regAddress").value.trim();
+  const referralCode = document.getElementById("regReferralCode").value.trim().toUpperCase();
+  msgBox.innerHTML = "";
+
+  if(!name || !number || !email || !password || !schoolName || !diseCode || !address){
+    msgBox.innerHTML = '<div class="msg msg-error">कृपया सभी फील्ड्स भरें</div>';
+    return;
+  }
+  if(!/^[0-9]{10}$/.test(number)){
+    msgBox.innerHTML = '<div class="msg msg-error">कृपया सही 10 अंकों का मोबाइल नंबर डालें</div>';
+    return;
+  }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    msgBox.innerHTML = '<div class="msg msg-error">कृपया सही Email Address डालें</div>';
+    return;
+  }
+
+  try{
+    const existingQ = window.__fs.query(
+      window.__fs.collection(window.__db, "headmasters"),
+      window.__fs.where("number", "==", number)
+    );
+    const existingSnap = await window.__fs.getDocs(existingQ);
+    if(!existingSnap.empty){
+      msgBox.innerHTML = '<div class="msg msg-error">यह मोबाइल नंबर पहले से Register है। कृपया Login करें।</div>';
+      return;
+    }
+
+    registrationInProgress = true; // onAuthStateChanged बीच में दखल न दे
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    const regNo = await generateUniqueHmRegistrationNumber();
+    const hmData = {
+      authUid: cred.user.uid, name, number, email,
+      schoolName, diseCode, address,
+      banned: false, banReason: null, banUntil: null,
+      referredBy: referralCode || null, referralCount: 0, firstActivityMarked: false,
+      createdAt: new Date().toISOString()
+    };
+    await window.__fs.setDoc(window.__fs.doc(window.__db, "headmasters", regNo), hmData);
+    await applyReferralIfAny(referralCode, { regNo, name, number });
+    currentHM = { regNo, ...hmData };
+    authResolved = true;
+    registrationInProgress = false;
+    msgBox.innerHTML = '<div class="msg msg-success">Account बन गया ✅ आपका Registration Number: <b>' + regNo + '</b></div>';
+    setTimeout(() => { loginSuccess(); }, 1000);
+  }catch(err){
+    registrationInProgress = false;
+    if(err.code === "auth/email-already-in-use"){
+      msgBox.innerHTML = '<div class="msg msg-error">यह Email पहले से किसी अकाउंट में इस्तेमाल हो रहा है</div>';
+    } else if(err.code === "auth/weak-password"){
+      msgBox.innerHTML = '<div class="msg msg-error">Password कमज़ोर है, कम से कम 6 अक्षर का बनाएं</div>';
+    } else {
+      msgBox.innerHTML = '<div class="msg msg-error">Error: ' + err.message + '</div>';
+    }
+  }
+};
+
+// ---- Forgot Password — Admin के लिए एक Request बना देता है (Teacher App जैसे ही) ----
+window.submitForgotPassword = async function(){
+  const msgBox = document.getElementById("forgotMsg");
+  const number = document.getElementById("fpNumber").value.trim();
+  const email = document.getElementById("fpEmail").value.trim();
+  const note = document.getElementById("fpNote").value.trim();
+  if(!/^[0-9]{10}$/.test(number) || !email){
+    msgBox.innerHTML = '<div class="msg msg-error">कृपया सही Mobile Number और Email डालें</div>';
+    return;
+  }
+  try{
+    await window.__fs.addDoc(window.__fs.collection(window.__db, "headmasterPasswordRequests"), {
+      number, email, note: note || "", status: "pending", createdAt: new Date().toISOString()
+    });
+    msgBox.innerHTML = '<div class="msg msg-success">✅ Request भेज दी गई है। Admin जल्द ही आपसे संपर्क करेंगे।</div>';
+    document.getElementById("fpNumber").value = "";
+    document.getElementById("fpEmail").value = "";
+    document.getElementById("fpNote").value = "";
+  }catch(err){
+    msgBox.innerHTML = '<div class="msg msg-error">Error: ' + err.message + '</div>';
+  }
+};
+
+function loginSuccess(){
+  document.getElementById("topbarUser").textContent = currentHM.name + " (" + currentHM.regNo + ")";
+  document.getElementById("logoutBtn").classList.remove("hidden");
+  document.getElementById("dashSchoolNameHeading").textContent = "🏫 " + (currentHM.schoolName || "School") + " — Overview";
+  applyHmPlanStatusUI();
+  showScreen("screenDashboard");
+  loadDashboardOverview();
+}
+
+let registrationInProgress = false;
+
+/* =====================================================================
+   🎁 REFER TO EARN — Teacher App जैसा ही (हर सफल Referral पर ₹20 का Gift Card)
+   ===================================================================== */
+const REFERRAL_GIFTCARD_AMOUNT = 20;
+const APP_BRAND_NAME = "PSB Headmaster";
+const APP_BRAND_URL = "PSBcompany.in";
+
+// ---- Short Buy के साझा Gift Card API को Request भेजना (Teacher/Headmaster/Student में एक जैसा) ----
+// हर Referral के लिए Document का ID तय ("ref_<referred-id>") रखा गया है — इसलिए भले ही यही Function
+// दो बार या दो Device से चल जाए, Short Buy में एक ही Request बनेगी, Duplicate Gift Card नहीं।
+const SHORTBUY_GIFT_API_URL = "https://firestore.googleapis.com/v1/projects/psb-chtting/databases/(default)/documents/apiGiftRequests";
+const SHORTBUY_WEB_API_KEY = "AIzaSyCkblGm-Esda5VbOZYkpQpHsBePhxen8hk";
+const GIFTCARD_API_KEY = "sbk_muhtvs44k1j212wfor";
+async function sendReferralGiftRequest(referral, referredId){
+  if(!referral.referrerMobile){ console.warn("Referrer का Mobile नहीं मिला, Gift Card Request नहीं भेजी"); return false; }
+  const payload = JSON.stringify({ fields: {
+    apiKey: { stringValue: GIFTCARD_API_KEY },
+    amount: { integerValue: String(REFERRAL_GIFTCARD_AMOUNT) },
+    recipientName: { stringValue: referral.referrerName || "" },
+    recipientPhone: { stringValue: referral.referrerMobile || "" },
+    recipientAddress: { stringValue: "" },
+    status: { stringValue: "pending" }
+  }});
+  const headers = { "Content-Type": "application/json" };
+  let resp = await fetch(`${SHORTBUY_GIFT_API_URL}?documentId=${encodeURIComponent("ref_" + referredId)}&key=${SHORTBUY_WEB_API_KEY}`, { method: "POST", headers, body: payload });
+  if(resp.ok || resp.status === 409) return true; // 409 = यह Request पहले ही बन चुकी है
+  if(resp.status === 400 || resp.status === 403){
+    // Server ने तय-ID वाला तरीका नहीं माना (Document बना ही नहीं) — पुराने सीधे तरीके से एक बार फिर कोशिश
+    resp = await fetch(`${SHORTBUY_GIFT_API_URL}?key=${SHORTBUY_WEB_API_KEY}`, { method: "POST", headers, body: payload });
+    return resp.ok;
+  }
+  return false;
+}
+
+
+// नया Headmaster वैध Referral Code के साथ बना → Referrer की गिनती बढ़ाएं और "referrals/{नए का regNo}"
+// Record बनाएं (ID तय होने से डुप्लीकेट नहीं बनेगा)। गलत/खाली कोड चुपचाप अनदेखा — Sign Up नहीं रुकता।
+async function applyReferralIfAny(referralCodeRaw, newHM){
+  const referralCode = (referralCodeRaw || "").trim().toUpperCase();
+  if(!referralCode || referralCode === newHM.regNo) return;
+  try{
+    const refDocRef = window.__fs.doc(window.__db, "headmasters", referralCode);
+    const refSnap = await window.__fs.getDoc(refDocRef);
+    if(!refSnap.exists()) return;
+    const referrer = refSnap.data();
+    await window.__fs.updateDoc(refDocRef, { referralCount: window.__fs.increment(1) }).catch(()=>{});
+    await window.__fs.setDoc(window.__fs.doc(window.__db, "referrals", newHM.regNo), {
+      appType: "headmaster",
+      referrerRegNo: referralCode, referrerName: referrer.name || "", referrerMobile: referrer.number || "",
+      referredRegNo: newHM.regNo, referredName: newHM.name || "", referredMobile: newHM.number || "",
+      status: "joined", createdAt: new Date().toISOString()
+    });
+  }catch(err){ console.warn("Referral Record बनाने में समस्या:", err.message); }
+}
+
+// Headmaster का पहला असली काम (Notice भेजना, Teacher को Suspend/Unsuspend करना, या अपने School का
+// Data — Students/Attendance/Fees — देखना, जब कम से कम एक Teacher स्कूल से जुड़ चुका हो) → Referrer के
+// लिए Gift Card Request। सिर्फ़ Request पहुंचने पर ही "पूरा" Mark होता है, वरना अगली बार फिर कोशिश।
+let firstActivityInFlight = false;
+let giftAttempts = 0;
+async function markFirstActivityIfNeeded(){
+  if(!currentHM || firstActivityInFlight || currentHM.firstActivityMarked || giftAttempts >= 3) return;
+  if(!schoolTeachers.length) return; // अभी कोई Teacher जुड़ा ही नहीं — यह "असली काम" नहीं माना जाएगा
+  firstActivityInFlight = true;
+  try{
+    if(currentHM.referredBy){
+      const refDoc = window.__fs.doc(window.__db, "referrals", currentHM.regNo);
+      const refSnap = await window.__fs.getDoc(refDoc);
+      if(refSnap.exists() && refSnap.data().status === "joined"){
+        giftAttempts++;
+        const ok = await sendReferralGiftRequest(refSnap.data(), currentHM.regNo);
+        if(!ok) return;
+        await window.__fs.updateDoc(refDoc, { status: "activity_started", activityStartedAt: new Date().toISOString() });
+      }
+    }
+    await window.__fs.updateDoc(window.__fs.doc(window.__db, "headmasters", currentHM.regNo), {
+      firstActivityMarked: true, firstActivityAt: new Date().toISOString()
+    });
+    currentHM.firstActivityMarked = true;
+  }catch(err){ console.warn("First Activity मार्क करने में समस्या:", err.message); }
+  finally{ firstActivityInFlight = false; }
+}
+
+let referEarnUnsub = null;
+window.openReferEarnScreen = function(){
+  if(!currentHM) return;
+  document.getElementById("refEarnAmount").textContent = REFERRAL_GIFTCARD_AMOUNT;
+  document.getElementById("refEarnCode").textContent = currentHM.regNo;
+  showScreen("screenReferEarn");
+  if(referEarnUnsub) referEarnUnsub();
+  referEarnUnsub = window.__fs.onSnapshot(
+    window.__fs.query(window.__fs.collection(window.__db, "referrals"), window.__fs.where("referrerRegNo", "==", currentHM.regNo)),
+    (snap) => {
+      const list = snap.docs.map(d => d.data());
+      list.sort((a,b) => (b.createdAt||"").localeCompare(a.createdAt||""));
+      renderReferEarnList(list);
+    },
+    (err) => { document.getElementById("refEarnListWrap").innerHTML = `<p style="color:var(--danger);">Load नहीं हो पाया: ${escapeHtml(err.message)}</p>`; }
+  );
+};
+function referralStatusBadge(status){
+  if(status === "giftcard_sent") return '<span class="badge badge-pass">🎉 Gift Card भेज दिया गया</span>';
+  if(status === "activity_started") return '<span class="badge badge-pending">🎁 Gift Card Request भेजा गया — 24 घंटे में WhatsApp पर मिलेगा</span>';
+  return '<span class="badge badge-private">🟡 जुड़ गए — अभी काम शुरू नहीं किया</span>';
+}
+function renderReferEarnList(list){
+  const wrap = document.getElementById("refEarnListWrap");
+  if(list.length === 0){
+    wrap.innerHTML = '<p style="color:#8892a0;">अभी तक किसी ने आपका Referral Code इस्तेमाल नहीं किया। ऊपर से Link शेयर करें!</p>';
+    return;
+  }
+  wrap.innerHTML = list.map(r => `
+    <div class="notice-card" style="border-left-color:var(--primary);">
+      <h4 style="margin:0 0 4px;">${escapeHtml(r.referredName || r.referredRegNo)}</h4>
+      <div style="font-size:12px;color:#8892a0;margin-bottom:6px;">${formatDate(r.createdAt)}</div>
+      ${referralStatusBadge(r.status)}
+    </div>`).join("");
+}
+window.shareReferralCode = async function(){
+  if(!currentHM) return;
+  const refLink = `https://${APP_BRAND_URL}/headmaster-app.html?ref=${currentHM.regNo}`;
+  const text = `मैं ${APP_BRAND_NAME} (${APP_BRAND_URL}) इस्तेमाल करता/करती हूँ — पूरे School का Overview एक जगह! इस Link से Sign Up करें: ${refLink} — जैसे ही आप App पर काम शुरू करेंगे, मुझे ₹${REFERRAL_GIFTCARD_AMOUNT} का Gift Card मिलेगा 🎉`;
+  if(navigator.share){ try{ await navigator.share({ title: APP_BRAND_NAME, text }); }catch(e){} }
+  else{ try{ await navigator.clipboard.writeText(text); alert("मैसेज Clipboard में Copy कर दिया गया है।"); }catch(e){ alert(text); } }
+};
+
+// ---- Google Login (Teacher App जैसा ही) ----
+window.loginWithGoogle = async function(){
+  try{
+    await signInWithPopup(auth, googleProvider);
+    // onAuthStateChanged आगे संभाल लेगा: Profile मिली -> Dashboard, नहीं मिली -> Complete Profile स्क्रीन
+  }catch(err){
+    if(err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") return;
+    if(err.code === "auth/popup-blocked"){
+      showGlobalError("Browser ने Google का Popup रोक दिया है। कृपया इस साइट के लिए Popup की अनुमति दें और दोबारा कोशिश करें।");
+    } else if(err.code === "auth/unauthorized-domain"){
+      showGlobalError("इस Domain को Google Login की अनुमति नहीं है — Firebase Console > Authentication > Settings > Authorized domains में इस साइट का Domain जोड़ें।");
+    } else {
+      showGlobalError("Google Login Error: " + err.message);
+    }
+  }
+};
+
+window.submitCompleteProfile = async function(){
+  const msgBox = document.getElementById("cpMsg");
+  const user = auth.currentUser;
+  if(!user){ showScreen("screenLogin"); return; }
+  const name = document.getElementById("cpName").value.trim();
+  const number = document.getElementById("cpNumber").value.trim();
+  const schoolName = document.getElementById("cpSchoolName").value.trim();
+  const diseCode = document.getElementById("cpDiseCode").value.trim();
+  const address = document.getElementById("cpAddress").value.trim();
+  const referralCode = document.getElementById("cpReferralCode").value.trim().toUpperCase();
+  msgBox.innerHTML = "";
+  if(!name || !number || !schoolName || !diseCode || !address){
+    msgBox.innerHTML = '<div class="msg msg-error">कृपया सभी फील्ड्स भरें</div>';
+    return;
+  }
+  if(!/^[0-9]{10}$/.test(number)){
+    msgBox.innerHTML = '<div class="msg msg-error">कृपया सही 10 अंकों का मोबाइल नंबर डालें</div>';
+    return;
+  }
+  try{
+    // दोबारा Save न हो जाए (जैसे दो बार दबाने पर) — पहले देखें कि Profile अब तक बनी तो नहीं
+    const already = await findHeadmasterProfileByUid(user.uid);
+    if(already){ currentHM = already; authResolved = true; loginSuccess(); return; }
+
+    const existingSnap = await window.__fs.getDocs(window.__fs.query(
+      window.__fs.collection(window.__db, "headmasters"), window.__fs.where("number", "==", number)));
+    if(!existingSnap.empty){
+      msgBox.innerHTML = '<div class="msg msg-error">यह मोबाइल नंबर पहले से किसी Headmaster Account में Register है।</div>';
+      return;
+    }
+    const regNo = await generateUniqueHmRegistrationNumber();
+    const hmData = {
+      authUid: user.uid, name, number, email: user.email || "",
+      schoolName, diseCode, address,
+      banned: false, banReason: null, banUntil: null,
+      referredBy: referralCode || null, referralCount: 0, firstActivityMarked: false,
+      createdAt: new Date().toISOString()
+    };
+    await window.__fs.setDoc(window.__fs.doc(window.__db, "headmasters", regNo), hmData);
+    await applyReferralIfAny(referralCode, { regNo, name, number });
+    currentHM = { regNo, ...hmData };
+    authResolved = true;
+    loginSuccess();
+  }catch(err){
+    msgBox.innerHTML = '<div class="msg msg-error">Error: ' + err.message + '</div>';
+  }
+};
+
+window.goToDashboard = function(){
+  showScreen("screenDashboard");
+  loadDashboardOverview();
+};
+
+/* =====================================================================
+   PART 2: SCHOOL-SCOPED DATA HELPERS
+   ---------------------------------------------------------------------
+   हर Teacher का Document (teachers/{regNo}) में एक "diseCode" Field होता
+   है (सिर्फ "School Teacher" के लिए)। currentHM.diseCode से Match करने
+   वाले सभी Teachers ही इस Headmaster के "स्कूल के Staff" माने जाते हैं।
+
+   Students/Attendance Collections में सीधे diseCode Save नहीं होता (वो
+   सिर्फ teacherRegNo रखते हैं), इसलिए वहाँ पहले स्कूल के Teachers का
+   regNo निकालकर, फिर उन regNo पर "in" Query (30-30 के Batch में, क्योंकि
+   Firestore एक बार में ज़्यादा से ज़्यादा 30 values ही "in" में लेता है)
+   चलानी पड़ती है। testResults Collection में खुद diseCode Save होता है
+   (Teacher App उसे हर Result के साथ भेजता है), इसलिए वहाँ सीधे diseCode
+   से Query हो जाती है।
+   ===================================================================== */
+let schoolTeachers = []; // इस स्कूल (diseCode) के सभी Teacher Documents
+let schoolStudents = []; // इस स्कूल के सभी Teachers के सभी Students
+
+async function loadSchoolTeachers(){
+  if(!currentHM) return [];
+  const q = window.__fs.query(
+    window.__fs.collection(window.__db, "teachers"),
+    window.__fs.where("diseCode", "==", currentHM.diseCode)
+  );
+  const snap = await window.__fs.getDocs(q);
+  schoolTeachers = snap.docs.map(d => ({ id: d.id, regNo: d.id, ...d.data() }));
+  schoolTeachers.sort((a,b) => (a.name||"").localeCompare(b.name||""));
+  return schoolTeachers;
+}
+
+async function fetchByTeacherRegNos(collectionName, regNos, extraFilters){
+  if(!regNos || regNos.length === 0) return [];
+  const chunks = chunkArray(regNos, 30);
+  const out = [];
+  for(const c of chunks){
+    let qConstraints = [window.__fs.where("teacherRegNo", "in", c)];
+    if(extraFilters) qConstraints = qConstraints.concat(extraFilters);
+    const q = window.__fs.query(window.__fs.collection(window.__db, collectionName), ...qConstraints);
+    const snap = await window.__fs.getDocs(q);
+    snap.forEach(d => out.push({ id: d.id, ...d.data() }));
+  }
+  return out;
+}
+
+async function loadSchoolStudents(){
+  const regNos = schoolTeachers.map(t => t.regNo);
+  schoolStudents = await fetchByTeacherRegNos("students", regNos);
+  schoolStudents.sort((a,b) => (a.name||"").localeCompare(b.name||""));
+  return schoolStudents;
+}
+
+function teacherNameByRegNo(regNo){
+  const t = schoolTeachers.find(x => x.regNo === regNo);
+  return t ? t.name : regNo;
+}
+
+/* =====================================================================
+   PART 3: DASHBOARD OVERVIEW
+   ===================================================================== */
+async function loadDashboardOverview(){
+  if(!currentHM) return;
+  document.getElementById("statTeacherCount").textContent = "...";
+  document.getElementById("statStudentCount").textContent = "...";
+  document.getElementById("statFeeDue").textContent = "...";
+  try{
+    await loadSchoolTeachers();
+    await loadSchoolStudents();
+    document.getElementById("statTeacherCount").textContent = schoolTeachers.length;
+    document.getElementById("statStudentCount").textContent = schoolStudents.length;
+    const totalDue = schoolStudents.reduce((sum, s) => sum + studentFeeDue(s), 0);
+    document.getElementById("statFeeDue").textContent = "₹" + totalDue;
+
+    const noticesQ = window.__fs.query(
+      window.__fs.collection(window.__db, "announcements"),
+      window.__fs.where("postedByHeadmasterRegNo", "==", currentHM.regNo)
+    );
+    const noticesSnap = await window.__fs.getDocs(noticesQ);
+    document.getElementById("statNoticeCount").textContent = noticesSnap.size;
+  }catch(err){
+    showGlobalError("Overview लोड करने में समस्या: " + err.message);
+  }
+}
+
+function studentFeePaid(s){
+  return (s.feeInstallments || []).reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+}
+function studentFeeDue(s){
+  return Math.max(0, (Number(s.totalFee) || 0) - studentFeePaid(s));
+}
+
+/* =====================================================================
+   PART 4: TEACHERS SCREEN
+   ===================================================================== */
+window.openTeachersScreen = async function(){
+  showScreen("screenTeachers");
+  document.getElementById("teachersMsg").innerHTML = "";
+  document.getElementById("teachersListWrap").innerHTML = "<p style='color:#8892a0;'>लोड हो रहा है...</p>";
+  await loadSchoolTeachers();
+  renderTeachersList();
+};
+
+window.renderTeachersList = function(){
+  const search = (document.getElementById("teachersSearch").value || "").toLowerCase();
+  const wrap = document.getElementById("teachersListWrap");
+  const filtered = schoolTeachers.filter(t =>
+    (t.name||"").toLowerCase().includes(search) || (t.number||"").includes(search)
+  );
+  if(filtered.length === 0){
+    wrap.innerHTML = "<p>अभी तक कोई Teacher इस DISE Code से नहीं जुड़ा। अपने Teachers को School Profile में मौजूद DISE Code दें।</p>";
+    return;
+  }
+  wrap.innerHTML = `<table class="list-table"><tr><th>नाम</th><th>Mobile</th><th>Plan</th><th>Status</th><th>Action</th></tr>` +
+    filtered.map(t => {
+      const isBanned = t.banned && t.banUntil && new Date(t.banUntil) > new Date();
+      return `<tr>
+        <td>${escapeHtml(t.name)}</td>
+        <td>${escapeHtml(t.number||"-")}</td>
+        <td>${t.plan === "premium" ? "⭐ Premium" : "🆓 Free"}</td>
+        <td>${isBanned ? '<span class="badge badge-ban">Suspended</span>' : '<span class="badge badge-active">Active</span>'}</td>
+        <td>
+          ${isBanned
+            ? `<button class="btn btn-outline btn-sm" onclick="unsuspendTeacher('${t.regNo}')">Unsuspend</button>`
+            : `<button class="btn btn-danger btn-sm" onclick="openSuspendTeacherModal('${t.regNo}')">Suspend</button>`}
+        </td>
+      </tr>`;
+    }).join("") + `</table>`;
+};
+
+window.openSuspendTeacherModal = function(regNo){
+  const t = schoolTeachers.find(x => x.regNo === regNo);
+  if(!t) return;
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.id = "suspendTeacherOverlay";
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <h3>${escapeHtml(t.name)} को Suspend करें</h3>
+      <div id="stMsg"></div>
+      <label>कारण (Reason)</label>
+      <textarea id="stReason" placeholder="जैसे: फीस से जुड़ी गड़बड़ी"></textarea>
+      <label>कितने दिनों के लिए Suspend करें?</label>
+      <input type="number" id="stDays" value="7" min="1">
+      <div class="footer-actions">
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('suspendTeacherOverlay').remove()">Cancel</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmSuspendTeacher('${regNo}')">Suspend करें</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+};
+
+window.confirmSuspendTeacher = async function(regNo){
+  const reason = document.getElementById("stReason").value.trim();
+  const days = parseInt(document.getElementById("stDays").value, 10) || 7;
+  const msgBox = document.getElementById("stMsg");
+  try{
+    const banUntil = new Date();
+    banUntil.setDate(banUntil.getDate() + days);
+    await window.__fs.updateDoc(window.__fs.doc(window.__db, "teachers", regNo), {
+      banned: true, banReason: reason || "Headmaster द्वारा Suspend किया गया", banUntil: banUntil.toISOString()
+    });
+    document.getElementById("suspendTeacherOverlay").remove();
+    await loadSchoolTeachers();
+    renderTeachersList();
+    triggerPopunderAd();
+    markFirstActivityIfNeeded();
+  }catch(err){
+    msgBox.innerHTML = '<div class="msg msg-error">Error: ' + err.message + '</div>';
+  }
+};
+
+window.unsuspendTeacher = async function(regNo){
+  try{
+    await window.__fs.updateDoc(window.__fs.doc(window.__db, "teachers", regNo), { banned: false, banReason: null, banUntil: null });
+    await loadSchoolTeachers();
+    renderTeachersList();
+    markFirstActivityIfNeeded();
+  }catch(err){
+    document.getElementById("teachersMsg").innerHTML = '<div class="msg msg-error">Error: ' + err.message + '</div>';
+  }
+};
+
+/* =====================================================================
+   PART 5: STUDENTS SCREEN
+   ===================================================================== */
+window.openStudentsScreen = async function(){
+  showScreen("screenStudents");
+  document.getElementById("studentsMsg").innerHTML = "";
+  document.getElementById("studentsListWrap").innerHTML = "<p style='color:#8892a0;'>लोड हो रहा है...</p>";
+  if(schoolTeachers.length === 0) await loadSchoolTeachers();
+  await loadSchoolStudents();
+  markFirstActivityIfNeeded();
+
+  const classSel = document.getElementById("studentsClassFilter");
+  const classes = [...new Set(schoolStudents.map(s => s.class).filter(Boolean))].sort();
+  classSel.innerHTML = `<option value="">सभी Class</option>` + classes.map(c => `<option value="${escapeAttr(c)}">${escapeHtml(c)}</option>`).join("");
+
+  const teacherSel = document.getElementById("studentsTeacherFilter");
+  teacherSel.innerHTML = `<option value="">सभी Teacher</option>` + schoolTeachers.map(t => `<option value="${t.regNo}">${escapeHtml(t.name)}</option>`).join("");
+
+  renderStudentsList();
+};
+
+window.renderStudentsList = function(){
+  const search = (document.getElementById("studentsSearch").value || "").toLowerCase();
+  const classFilter = document.getElementById("studentsClassFilter").value;
+  const teacherFilter = document.getElementById("studentsTeacherFilter").value;
+  const wrap = document.getElementById("studentsListWrap");
+
+  const filtered = schoolStudents.filter(s => {
+    if(classFilter && s.class !== classFilter) return false;
+    if(teacherFilter && s.teacherRegNo !== teacherFilter) return false;
+    const hay = ((s.name||"") + " " + (s.class||"") + " " + (s.rollNo||"")).toLowerCase();
+    return hay.includes(search);
+  });
+
+  if(filtered.length === 0){ wrap.innerHTML = "<p>कोई Student नहीं मिला।</p>"; return; }
+  wrap.innerHTML = `<table class="list-table"><tr><th>Photo</th><th>Name</th><th>Class</th><th>Section</th><th>Roll No</th><th>Teacher</th></tr>` +
+    filtered.map(s => `<tr>
+      <td>${s.photoDataUrl ? `<img src="${s.photoDataUrl}" style="width:30px;height:30px;object-fit:cover;border-radius:5px;">` : "-"}</td>
+      <td>${escapeHtml(s.name)}</td>
+      <td>${escapeHtml(s.class||"-")}</td>
+      <td>${escapeHtml(s.section||"-")}</td>
+      <td>${escapeHtml(s.rollNo||"-")}</td>
+      <td>${escapeHtml(teacherNameByRegNo(s.teacherRegNo))}</td>
+    </tr>`).join("") + `</table>`;
+};
+
+/* =====================================================================
+   PART 6: NOTICES SCREEN
+   ---------------------------------------------------------------------
+   Teacher App के मौजूदा "announcements" Collection में ही नया Document
+   डालते हैं, बस "targetTeacherRegNos" Field में अपने स्कूल के सभी
+   Teachers के regNo भर देते हैं — Teacher App पहले से इसे Support करता
+   है (सिर्फ उन्हीं Teachers को दिखेगा), इसलिए वहाँ कोई बदलाव नहीं करना
+   पड़ा।
+   ===================================================================== */
+window.openNoticesScreen = async function(){
+  showScreen("screenNotices");
+  document.getElementById("noticeSendMsg").innerHTML = "";
+  document.getElementById("noticeTitle").value = "";
+  document.getElementById("noticeMessage").value = "";
+  document.getElementById("noticeLink").value = "";
+  if(schoolTeachers.length === 0) await loadSchoolTeachers();
+  await loadMyNotices();
+};
+
+window.sendNotice = async function(){
+  const msgBox = document.getElementById("noticeSendMsg");
+  const title = document.getElementById("noticeTitle").value.trim();
+  const message = document.getElementById("noticeMessage").value.trim();
+  const link = document.getElementById("noticeLink").value.trim();
+  if(!title){
+    msgBox.innerHTML = '<div class="msg msg-error">कृपया Title लिखें</div>';
+    return;
+  }
+  if(schoolTeachers.length === 0){
+    msgBox.innerHTML = '<div class="msg msg-error">आपके स्कूल से अभी तक कोई Teacher नहीं जुड़ा, इसलिए Notice किसी को नहीं भेजी जा सकती।</div>';
+    return;
+  }
+  try{
+    await window.__fs.addDoc(window.__fs.collection(window.__db, "announcements"), {
+      title, message: message || "", link: link || null,
+      active: true,
+      targetTeacherRegNos: schoolTeachers.map(t => t.regNo),
+      postedByHeadmasterRegNo: currentHM.regNo,
+      postedByHeadmasterName: currentHM.name,
+      schoolName: currentHM.schoolName,
+      diseCode: currentHM.diseCode,
+      createdAt: new Date().toISOString()
+    });
+    msgBox.innerHTML = '<div class="msg msg-success">✅ Notice आपके सभी Teachers को भेज दी गई</div>';
+    markFirstActivityIfNeeded();
+    triggerPopunderAd();
+    document.getElementById("noticeTitle").value = "";
+    document.getElementById("noticeMessage").value = "";
+    document.getElementById("noticeLink").value = "";
+    await loadMyNotices();
+  }catch(err){
+    msgBox.innerHTML = '<div class="msg msg-error">Error: ' + err.message + '</div>';
+  }
+};
+
+async function loadMyNotices(){
+  const wrap = document.getElementById("myNoticesWrap");
+  wrap.innerHTML = "<p style='color:#8892a0;'>लोड हो रहा है...</p>";
+  try{
+    const q = window.__fs.query(
+      window.__fs.collection(window.__db, "announcements"),
+      window.__fs.where("postedByHeadmasterRegNo", "==", currentHM.regNo)
+    );
+    const snap = await window.__fs.getDocs(q);
+    const notices = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    notices.sort((a,b) => (b.createdAt||"").localeCompare(a.createdAt||""));
+    if(notices.length === 0){ wrap.innerHTML = '<p style="color:#8892a0;">आपने अभी तक कोई Notice नहीं भेजी।</p>'; return; }
+    wrap.innerHTML = notices.map(a => `
+      <div class="notice-card">
+        <h4>📢 ${escapeHtml(a.title || "सूचना")}</h4>
+        ${a.message ? `<p>${escapeHtml(a.message)}</p>` : ""}
+        ${a.link ? `<a class="btn btn-outline btn-sm" href="${escapeAttr(a.link)}" target="_blank" rel="noopener">लिंक खोलें ↗</a>` : ""}
+        <div class="notice-date">${formatDate(a.createdAt)}</div>
+        <div class="footer-actions" style="margin-top:8px;">
+          <button class="btn btn-danger btn-sm" onclick="deleteNotice('${a.id}')">Delete करें</button>
+        </div>
+      </div>
+    `).join("");
+  }catch(err){
+    wrap.innerHTML = `<p style="color:#888;">Load नहीं हो पाया: ${escapeHtml(err.message)}</p>`;
+  }
+}
+
+window.deleteNotice = async function(id){
+  if(!confirm("क्या आप यह Notice हटाना चाहते हैं?")) return;
+  try{
+    await window.__fs.deleteDoc(window.__fs.doc(window.__db, "announcements", id));
+    await loadMyNotices();
+  }catch(err){
+    document.getElementById("myNoticesWrap").innerHTML = `<p style="color:var(--danger);">Delete नहीं हो पाया: ${escapeHtml(err.message)}</p>`;
+  }
+};
+
+/* =====================================================================
+   PART 7: ACADEMICS SCREEN (Attendance + Result Summary)
+   ===================================================================== */
+window.openAcademicsScreen = async function(){
+  showScreen("screenAcademics");
+  if(schoolTeachers.length === 0) await loadSchoolTeachers();
+  const dateInput = document.getElementById("acadAttDate");
+  if(!dateInput.value){
+    const today = new Date();
+    dateInput.value = today.toISOString().slice(0,10);
+  }
+  switchAcademicsTab("attendance");
+  loadAttendanceSummary();
+  loadResultSummary();
+};
+
+window.switchAcademicsTab = function(tab){
+  document.getElementById("acadTabAttendanceBtn").classList.toggle("active", tab === "attendance");
+  document.getElementById("acadTabResultBtn").classList.toggle("active", tab === "result");
+  document.getElementById("acadAttendancePane").classList.toggle("hidden", tab !== "attendance");
+  document.getElementById("acadResultPane").classList.toggle("hidden", tab !== "result");
+};
+
+window.loadAttendanceSummary = async function(){
+  const date = document.getElementById("acadAttDate").value;
+  const msgBox = document.getElementById("acadAttendanceMsg");
+  const wrap = document.getElementById("acadAttendanceWrap");
+  if(!date){ msgBox.innerHTML = '<div class="msg msg-error">तारीख चुनें</div>'; return; }
+  msgBox.innerHTML = "";
+  wrap.innerHTML = "<p style='color:#8892a0;'>लोड हो रहा है...</p>";
+  try{
+    const regNos = schoolTeachers.map(t => t.regNo);
+    const records = await fetchByTeacherRegNos("attendance", regNos, [window.__fs.where("date", "==", date)]);
+    if(records.length === 0){
+      wrap.innerHTML = '<p style="color:#8892a0;">इस तारीख की कोई Attendance अभी तक Save नहीं हुई।</p>';
+      return;
+    }
+    wrap.innerHTML = `<table class="list-table"><tr><th>Class</th><th>Teacher</th><th>कुल</th><th>Present</th><th>Absent</th><th>%</th></tr>` +
+      records.map(r => {
+        const total = (r.records||[]).length;
+        const present = (r.records||[]).filter(x => x.present).length;
+        const pct = total > 0 ? ((present/total)*100).toFixed(1) : "0";
+        return `<tr>
+          <td>${escapeHtml(r.class)}</td>
+          <td>${escapeHtml(teacherNameByRegNo(r.teacherRegNo))}</td>
+          <td>${total}</td>
+          <td>${present}</td>
+          <td>${total-present}</td>
+          <td>${pct}%</td>
+        </tr>`;
+      }).join("") + `</table>`;
+  }catch(err){
+    msgBox.innerHTML = '<div class="msg msg-error">Error: ' + err.message + '</div>';
+    wrap.innerHTML = "";
+  }
+};
+
+window.loadResultSummary = async function(){
+  const msgBox = document.getElementById("acadResultMsg");
+  const wrap = document.getElementById("acadResultWrap");
+  msgBox.innerHTML = "";
+  wrap.innerHTML = "<p style='color:#8892a0;'>लोड हो रहा है...</p>";
+  try{
+    // testResults में Teacher App खुद diseCode भी Save करता है, इसलिए यहाँ सीधे
+    // diseCode से Query हो जाती है — अलग से Teacher regNo निकालने की ज़रूरत नहीं।
+    const q = window.__fs.query(
+      window.__fs.collection(window.__db, "testResults"),
+      window.__fs.where("diseCode", "==", currentHM.diseCode)
+    );
+    const snap = await window.__fs.getDocs(q);
+    const results = snap.docs.map(d => d.data());
+    if(results.length === 0){
+      wrap.innerHTML = '<p style="color:#8892a0;">अभी तक कोई Test Result Save नहीं हुआ।</p>';
+      return;
+    }
+    // Class के हिसाब से Group करके Average % और Pass Rate निकालें
+    const byClass = {};
+    results.forEach(r => {
+      const cls = r.class || "अज्ञात";
+      if(!byClass[cls]) byClass[cls] = { count: 0, totalPct: 0, passCount: 0 };
+      byClass[cls].count++;
+      byClass[cls].totalPct += parseFloat(r.percentage) || 0;
+      if(r.result === "Pass") byClass[cls].passCount++;
+    });
+    const classNames = Object.keys(byClass).sort();
+    wrap.innerHTML = `<table class="list-table"><tr><th>Class</th><th>कुल Results</th><th>Average %</th><th>Pass Rate</th></tr>` +
+      classNames.map(cls => {
+        const c = byClass[cls];
+        const avg = (c.totalPct / c.count).toFixed(1);
+        const passRate = ((c.passCount / c.count) * 100).toFixed(0);
+        return `<tr>
+          <td>${escapeHtml(cls)}</td>
+          <td>${c.count}</td>
+          <td>${avg}%</td>
+          <td>${passRate}%</td>
+        </tr>`;
+      }).join("") + `</table>`;
+  }catch(err){
+    msgBox.innerHTML = '<div class="msg msg-error">Error: ' + err.message + '</div>';
+    wrap.innerHTML = "";
+  }
+};
+
+/* =====================================================================
+   PART 8: FEES OVERVIEW SCREEN (सिर्फ देखने के लिए)
+   ===================================================================== */
+window.openFeesScreen = async function(){
+  showScreen("screenFees");
+  document.getElementById("feesMsg").innerHTML = "";
+  document.getElementById("feesListWrap").innerHTML = "<p style='color:#8892a0;'>लोड हो रहा है...</p>";
+  if(schoolTeachers.length === 0) await loadSchoolTeachers();
+  await loadSchoolStudents();
+  markFirstActivityIfNeeded();
+
+  const totalFee = schoolStudents.reduce((sum, s) => sum + (Number(s.totalFee)||0), 0);
+  const collected = schoolStudents.reduce((sum, s) => sum + studentFeePaid(s), 0);
+  const due = schoolStudents.reduce((sum, s) => sum + studentFeeDue(s), 0);
+  const today = new Date().toISOString().slice(0,10);
+  const overdue = schoolStudents.filter(s => s.nextDueDate && s.nextDueDate <= today && studentFeeDue(s) > 0);
+
+  document.getElementById("feeStatTotal").textContent = "₹" + totalFee;
+  document.getElementById("feeStatCollected").textContent = "₹" + collected;
+  document.getElementById("feeStatDue").textContent = "₹" + due;
+  document.getElementById("feeStatOverdue").textContent = overdue.length;
+
+  const dueStudents = schoolStudents.filter(s => studentFeeDue(s) > 0)
+    .sort((a,b) => (a.nextDueDate||"9999").localeCompare(b.nextDueDate||"9999"));
+
+  const wrap = document.getElementById("feesListWrap");
+  if(dueStudents.length === 0){ wrap.innerHTML = "<p style='color:#8892a0;'>किसी भी Student की कोई Fee बाकी नहीं है 🎉</p>"; return; }
+  wrap.innerHTML = `<table class="list-table"><tr><th>Name</th><th>Class</th><th>Teacher</th><th>कुल Fee</th><th>बाकी</th><th>अगली तारीख</th></tr>` +
+    dueStudents.map(s => {
+      const isOverdue = s.nextDueDate && s.nextDueDate <= today;
+      return `<tr>
+        <td>${escapeHtml(s.name)}</td>
+        <td>${escapeHtml(s.class||"-")}</td>
+        <td>${escapeHtml(teacherNameByRegNo(s.teacherRegNo))}</td>
+        <td>₹${Number(s.totalFee)||0}</td>
+        <td>₹${studentFeeDue(s)}</td>
+        <td>${s.nextDueDate ? formatDate(s.nextDueDate).split(",")[0] : "-"}${isOverdue ? " ⚠️" : ""}</td>
+      </tr>`;
+    }).join("") + `</table>`;
+};
+
+/* =====================================================================
+   PART 9: SCHOOL PROFILE SCREEN
+   ===================================================================== */
+window.openProfileScreen = function(){
+  showScreen("screenProfile");
+  document.getElementById("profileMsg").innerHTML = "";
+  document.getElementById("profileDiseCodeDisplay").textContent = currentHM.diseCode;
+  document.getElementById("pfName").value = currentHM.name || "";
+  document.getElementById("pfNumber").value = currentHM.number || "";
+  document.getElementById("pfSchoolName").value = currentHM.schoolName || "";
+  document.getElementById("pfAddress").value = currentHM.address || "";
+};
+
+window.copyDiseCode = function(){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(currentHM.diseCode).then(() => alert("DISE Code Copy हो गया ✅"));
+  } else {
+    alert("आपका DISE Code: " + currentHM.diseCode);
+  }
+};
+
+window.saveProfile = async function(){
+  const msgBox = document.getElementById("profileMsg");
+  const name = document.getElementById("pfName").value.trim();
+  const number = document.getElementById("pfNumber").value.trim();
+  const schoolName = document.getElementById("pfSchoolName").value.trim();
+  const address = document.getElementById("pfAddress").value.trim();
+  if(!name || !number || !schoolName || !address){
+    msgBox.innerHTML = '<div class="msg msg-error">कृपया सभी फील्ड्स भरें</div>';
+    return;
+  }
+  if(!/^[0-9]{10}$/.test(number)){
+    msgBox.innerHTML = '<div class="msg msg-error">कृपया सही 10 अंकों का मोबाइल नंबर डालें</div>';
+    return;
+  }
+  try{
+    await window.__fs.updateDoc(window.__fs.doc(window.__db, "headmasters", currentHM.regNo), { name, number, schoolName, address });
+    currentHM.name = name; currentHM.number = number; currentHM.schoolName = schoolName; currentHM.address = address;
+    document.getElementById("topbarUser").textContent = currentHM.name + " (" + currentHM.regNo + ")";
+    document.getElementById("dashSchoolNameHeading").textContent = "🏫 " + schoolName + " — Overview";
+    msgBox.innerHTML = '<div class="msg msg-success">✅ Save हो गया</div>';
+    triggerPopunderAd();
+  }catch(err){
+    msgBox.innerHTML = '<div class="msg msg-error">Error: ' + err.message + '</div>';
+  }
+};
+</script>
+</body>
+</html>

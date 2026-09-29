@@ -1,0 +1,1957 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PSB Student - Result Portal</title>
+<!-- [App Install/PWA] Browser में "Install" का Option दिखाने के लिए -->
+<link rel="manifest" href="student-manifest.json">
+<meta name="theme-color" content="#1e6b4d">
+<link rel="apple-touch-icon" href="icon-student-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PSB Student">
+<!-- [फिक्स] असली PDF बनाकर Share करने के लिए (पहले सिर्फ Print होता था, Share नहीं था) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<!-- ⚠️ ज़रूरी: नीचे RECAPTCHA_SITE_KEY की जगह अपनी असली reCAPTCHA v2 Site Key डालें -->
+<script src="https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit" async defer></script>
+<style>
+  :root{
+    --primary:#1e6b4d; --primary-dark:#144d38; --accent:#ff8c00;
+    --bg:#f2f8f5; --card:#ffffff; --border:#d3e6dc;
+    --danger:#d9364a; --success:#1e8e5a; --text:#1b2430;
+  }
+  /* Dark Theme — Teacher App जैसा ही तरीका (CSS Variables बदल कर पूरी App Dark हो जाती है) */
+  html[data-theme="dark"]{
+    --primary:#4dbf8f; --primary-dark:#3a9c72; --accent:#ffab4d;
+    --bg:#0f1a15; --card:#182620; --border:#2b3f35;
+    --danger:#ff6b7a; --success:#4dd499; --text:#e8f5ee;
+  }
+  html[data-theme="dark"] body{background:var(--bg);color:var(--text);}
+  html[data-theme="dark"] input[type=text]{background:#0f1a15;color:var(--text);border-color:var(--border);}
+  html[data-theme="dark"] .print-sheet{background:#fff;color:#1b2430;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI',Arial,sans-serif;background:linear-gradient(180deg,#eaf6f0,#f2f8f5 220px);color:var(--text);}
+
+  .topbar{
+    background:linear-gradient(120deg,var(--primary),var(--primary-dark) 70%);
+    color:#fff;padding:34px 20px 30px;text-align:center;
+    box-shadow:0 4px 18px rgba(20,77,56,.25);
+    position:relative;overflow:hidden;
+  }
+  .topbar::before{
+    content:"";position:absolute;top:-60px;right:-60px;width:200px;height:200px;
+    background:rgba(255,255,255,.08);border-radius:50%;
+  }
+  .topbar::after{
+    content:"";position:absolute;bottom:-70px;left:-40px;width:180px;height:180px;
+    background:rgba(255,255,255,.06);border-radius:50%;
+  }
+  .topbar h1{
+    margin:0;font-size:34px;font-weight:800;letter-spacing:.5px;
+    text-shadow:0 2px 10px rgba(0,0,0,.15);
+  }
+  .topbar h1 span{color:var(--accent);}
+  .topbar p{margin:8px 0 0;font-size:14px;opacity:.95;}
+
+  .wrap{max-width:700px;margin:-22px auto 24px;padding:0 16px;position:relative;z-index:2;}
+
+  .tabs{display:flex;gap:8px;background:var(--card);border-radius:14px;padding:6px;box-shadow:0 6px 18px rgba(30,77,140,.1);margin-bottom:16px;overflow-x:auto;}
+  .tab-btn{flex:1;text-align:center;padding:12px 8px;border-radius:10px;cursor:pointer;font-weight:700;font-size:14px;color:var(--primary-dark);transition:.15s;user-select:none;}
+  .tab-btn.active{background:linear-gradient(120deg,var(--primary),var(--primary-dark));color:#fff;box-shadow:0 4px 10px rgba(20,77,56,.3);}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;margin-bottom:16px;box-shadow:0 4px 14px rgba(0,0,0,.05);}
+  .card h3{margin:0 0 14px;color:var(--primary-dark);font-size:17px;border-bottom:2px solid var(--border);padding-bottom:8px;}
+  label{display:block;font-size:13px;font-weight:700;margin:10px 0 4px;color:#3a4658;}
+  input[type=text]{width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:#fbfcfe;}
+  input[type=text]:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(30,107,77,.12);}
+  .row{display:flex;gap:10px;flex-wrap:wrap;}
+  .row > *{flex:1;min-width:140px;}
+  .btn{cursor:pointer;border:none;border-radius:10px;padding:13px 18px;font-size:15px;font-weight:700;transition:.15s;}
+  .btn-primary{background:linear-gradient(120deg,var(--primary),var(--primary-dark));color:#fff;width:100%;margin-top:18px;box-shadow:0 4px 12px rgba(20,77,56,.25);}
+  .btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(20,77,56,.3);}
+  .btn-accent{background:var(--accent);color:#fff;}
+  .btn-outline{background:#fff;color:var(--primary);border:1px solid var(--primary);}
+  .btn-sm{padding:8px 12px;font-size:13px;border-radius:8px;}
+  .msg{padding:12px 16px;border-radius:10px;font-size:13px;margin:12px 0;}
+  .msg-error{background:#fde8ea;color:var(--danger);border:1px solid #f7c3ca;text-align:center;}
+  .msg-info{background:#eaf1fb;color:#1e4d8c;border:1px solid #cfdff5;text-align:center;}
+  .hidden{display:none !important;}
+  .footer-actions{display:flex;justify-content:center;gap:10px;margin-top:16px;flex-wrap:wrap;}
+  .result-instruction-banner{
+    background:#eaf6f0;border:1px solid var(--border);color:var(--primary-dark);
+    font-size:13px;font-weight:600;text-align:center;padding:10px 14px;
+    border-radius:10px;margin-bottom:14px;
+  }
+  .notice-card{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:10px;padding:14px 16px;margin-bottom:12px;}
+  .notice-card h4{margin:0 0 6px;color:var(--primary-dark);font-size:15px;}
+  .notice-card p{margin:0 0 8px;font-size:13.5px;color:#444;}
+  .notice-card .notice-date{font-size:11px;color:#8892a0;}
+
+  /* [बदलाव 51] Daily Quiz + Streak + Leaderboard + Badges + Calculator + Referral */
+  .referral-box{border-top:1px dashed var(--border);margin-top:12px;padding-top:12px;}
+  .progress-summary-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:12.5px;color:#3a4658;margin-bottom:14px;text-align:center;}
+  .streak-display{text-align:center;background:linear-gradient(135deg,#fff3e0,#ffe0b2);border-radius:14px;padding:16px;margin:14px 0;}
+  html[data-theme="dark"] .streak-display{background:linear-gradient(135deg,#3a2c0f,#2c2010);}
+  .streak-num{font-size:36px;font-weight:800;color:#e07b00;}
+  .streak-lbl{font-size:12px;color:#8a5a00;}
+  .quiz-progress{font-size:12px;color:#888;margin-bottom:6px;text-align:center;}
+  .quiz-question{font-size:16px;font-weight:700;color:var(--primary-dark);text-align:center;margin-bottom:16px;padding:0 6px;}
+  .quiz-options{display:flex;flex-direction:column;gap:10px;}
+  .quiz-option-btn{
+    padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--card);
+    color:var(--text);font-size:14px;text-align:left;cursor:pointer;font-weight:600;
+  }
+  .quiz-option-btn:hover, .quiz-option-btn:active{background:var(--primary);color:#fff;border-color:var(--primary);}
+  .badges-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;justify-content:center;}
+  .badge-chip{background:#fff3e0;color:#a06400;border-radius:20px;padding:5px 12px;font-size:11.5px;font-weight:700;}
+  html[data-theme="dark"] .badge-chip{background:#3a2c0f;color:#fbbf24;}
+  .leaderboard-row{display:flex;align-items:center;gap:10px;padding:10px 8px;border-bottom:1px solid var(--border);font-size:13.5px;}
+  .leaderboard-row-me{background:#eaf6f0;border-radius:8px;}
+  html[data-theme="dark"] .leaderboard-row-me{background:#0f2e20;}
+  .lb-rank{width:28px;font-weight:800;text-align:center;}
+  .lb-name{flex:1;font-weight:600;}
+  .lb-streak{color:#e07b00;font-size:12px;}
+  .lb-points{font-weight:700;color:var(--primary);}
+  .calc-result-box{text-align:center;background:#eaf6f0;border-radius:12px;padding:16px;margin-top:14px;}
+  html[data-theme="dark"] .calc-result-box{background:#0f2e20;}
+  .calc-pct{font-size:28px;font-weight:800;color:var(--primary-dark);}
+  .calc-grade{font-size:14px;font-weight:700;margin-top:4px;}
+  .calc-remark{font-size:12.5px;color:#666;margin-top:2px;}
+  .gpa-row{align-items:center;margin-bottom:8px;}
+  .gpa-row input, .gpa-row select{flex:1;}
+  .gpa-row select{max-width:110px;}
+
+  /* [बदलाव 55] Doubt Forum */
+  .doubt-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;}
+  .doubt-meta{font-size:11.5px;color:#888;margin-bottom:6px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+  .doubt-q{font-size:14.5px;font-weight:600;color:var(--text);margin-bottom:8px;white-space:pre-wrap;word-break:break-word;}
+  .doubt-actions{display:flex;gap:10px;font-size:12px;}
+  .doubt-actions a, .doubt-actions button{background:none;border:none;color:var(--primary);cursor:pointer;padding:0;font-size:12px;}
+  .doubt-answers-wrap{margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);}
+  .doubt-answer-row{background:var(--bg);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:13px;}
+  .doubt-answer-meta{font-size:10.5px;color:#999;margin-top:4px;}
+  .doubt-answer-form{display:flex;gap:8px;margin-top:8px;}
+  .doubt-answer-form textarea{flex:1;min-height:44px;}
+  #legalFooterBar{text-align:center;padding:16px 10px;font-size:12px;color:#7c8896;border-top:1px solid var(--border);margin-top:24px;}
+  #legalFooterBar a{margin:0 4px;color:#3a6650;text-decoration:none;}
+  @media print{ #legalFooterBar{display:none !important;} }
+
+  table.list-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px;}
+  table.list-table th,table.list-table td{border:1px solid var(--border);padding:8px;text-align:left;}
+  table.list-table th{background:#eaf6f0;color:var(--primary-dark);}
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+  .badge-pass{background:#e6f6ee;color:var(--success);}
+  .badge-fail{background:#fde8ea;color:var(--danger);}
+
+  .print-sheet{max-width:800px;margin:0 auto 20px;padding:24px;border:2px solid #333;font-family:'Times New Roman',serif;page-break-after:always;}
+  .print-sheet:last-child{page-break-after:auto;}
+  .print-sheet h2{text-align:center;margin:0 0 4px;color:#1e6b4d;}
+  .print-sheet .sub{text-align:center;font-size:13px;margin-bottom:14px;color:#555;}
+  .print-sheet table{width:100%;border-collapse:collapse;margin-top:10px;}
+  .print-sheet table td,.print-sheet table th{border:1px solid #333;padding:6px 8px;font-size:14px;}
+  .print-details{display:flex;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px;font-size:14px;}
+  .print-details div{width:48%;padding:2px 0;}
+  .print-header-band{border-bottom:1px solid #999;margin-bottom:10px;padding-bottom:8px;font-size:12px;color:#444;display:flex;justify-content:space-between;flex-wrap:wrap;}
+  .print-footer-band{border-top:1px solid #999;margin-top:24px;padding-top:8px;font-size:11px;color:#555;}
+  .print-powered-footer{text-align:center;font-size:9.5px;color:#9aa5b3;margin-top:10px;letter-spacing:.3px;}
+  .result-badge{font-weight:bold;font-size:18px;text-align:center;margin-top:14px;padding:8px;border-radius:6px;}
+  .result-pass{background:#e6f6ee;color:var(--success);}
+  .result-fail{background:#fde8ea;color:var(--danger);}
+  .sign-row{display:flex;justify-content:space-between;margin-top:50px;font-size:13px;}
+  #printArea{display:none;}
+  @media print{
+    /* [फिक्स] सिर्फ visibility:hidden से Ad Script और एक्स्ट्रा खाली पेज दोनों समस्या आ रही थी —
+       अब body के हर बच्चे को #printArea के अलावा display:none कर देते हैं, जिससे न कोई Ad
+       दिख सकता है (चाहे वो जबरन visibility:visible सेट करे) और न पेज की ऊँचाई बढ़कर एक्स्ट्रा
+       खाली पेज बनते हैं। */
+    body > *:not(#printArea){display:none !important;}
+    #printArea{display:block !important;}
+    #printArea, #printArea *{visibility:visible;}
+    *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important; }
+    @page{ margin:10mm; }
+  }
+  .print-sheet{position:relative;overflow:hidden;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .print-watermark{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);
+    font-size:46px;font-weight:800;color:rgba(30,107,77,0.16);white-space:nowrap;pointer-events:none;
+    z-index:0;user-select:none;letter-spacing:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .print-sheet > *:not(.print-watermark){position:relative;z-index:1;}
+
+  .app-blocked-wrap{max-width:480px;margin:60px auto;text-align:center;padding:0 16px;}
+  .app-blocked-wrap .icon{font-size:54px;}
+
+  /* ==================================================================
+     Ad Placement System (Adsterra) — Teacher App जैसा ही सिस्टम यहां भी।
+     .psb-ad-slot: हर जगह लगे विज्ञापन का सामान्य कंटेनर।
+     ================================================================== */
+  .psb-ad-slot{margin:14px 0;text-align:center;}
+  .psb-ad-slot-infeed{border:1px dashed var(--border);border-radius:8px;padding:10px;background:#fafbfc;}
+  .psb-ad-label{font-size:11px;color:#8892a0;margin-top:4px;}
+  /* Sticky Bottom Banner — नीचे चिपका रहेगा (Global Footer Ad) */
+  #stickyAdBar{
+    position:fixed;left:0;right:0;bottom:0;z-index:500;
+    background:#fff;border-top:1px solid var(--border);
+    padding:4px 8px 2px;margin:0;
+    box-shadow:0 -2px 8px rgba(0,0,0,0.08);
+  }
+  /* Sticky Bar (728x90) के नीचे छुप जाने से बचाने के लिए पेज में जगह छोड़ी */
+  body{padding-bottom:100px;}
+</style>
+</head>
+<body>
+<script>
+  (function(){
+    try{
+      const saved = localStorage.getItem("psb_theme");
+      if(saved === "dark") document.documentElement.setAttribute("data-theme", "dark");
+    }catch(e){}
+  })();
+</script>
+
+<div class="topbar">
+  <h1><a href="index.html" style="color:inherit;text-decoration:none;">🏆 <span>PSB</span> Student</a></h1>
+  <p>अपना Result देखने के लिए नीचे सही जानकारी भरें</p>
+  <button class="btn btn-outline btn-sm" id="themeToggleBtn" onclick="toggleTheme()" style="position:absolute;top:16px;right:16px;" title="Dark/Light Theme">🌙</button>
+</div>
+
+<div class="wrap hidden" id="blockedWrap">
+  <div class="card app-blocked-wrap">
+    <div class="icon">🚫</div>
+    <h2 style="color:var(--danger);">यह ऐप अभी बंद है</h2>
+    <p style="color:#666;">Admin ने PSB Student App को अभी के लिए बंद कर दिया है। कृपया कुछ समय बाद पुनः कोशिश करें।</p>
+  </div>
+</div>
+
+<div class="wrap hidden" id="bannedWrap">
+  <div class="card app-blocked-wrap">
+    <div class="icon">⛔</div>
+    <h2 style="color:var(--danger);">आपका अकाउंट अस्थायी रूप से Ban है</h2>
+    <p style="color:#666;" id="bannedMessageText"></p>
+    <button class="btn btn-outline btn-sm" id="bannedLogoutBtn">Logout</button>
+  </div>
+</div>
+
+<div class="wrap" id="authWrap">
+  <div id="pwaInstallWrap" class="hidden" style="text-align:right;margin-bottom:8px;">
+    <button class="btn btn-primary btn-sm" id="pwaInstallBtn" onclick="triggerPwaInstall()">📲 App Install करें</button>
+  </div>
+  <div class="card" id="loginCard">
+    <h3>🔐 Login करें</h3>
+    <p style="font-size:13px;color:#3a4658;margin:0 0 14px;">Result देखने के लिए पहले Google से Login करें</p>
+    <button class="btn btn-primary" id="googleLoginBtn">🔵 Google से Login करें</button>
+    <div id="authMsg"></div>
+    <div id="adSlotLogin" class="psb-ad-slot psb-ad-slot-infeed"></div>
+  </div>
+  <div class="card hidden" id="userCard">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+      <div style="font-size:13px;color:#3a4658;">✅ लॉगिन: <b id="userEmailText"></b></div>
+      <button class="btn btn-outline btn-sm" id="logoutBtn">Logout</button>
+    </div>
+    <div class="referral-box">
+      <div style="font-size:14px;font-weight:700;color:var(--primary-dark);">🎁 Refer to Earn — दोस्त बुलाएं, ₹20 कमाएं!</div>
+      <p style="font-size:12px;color:#666;margin:4px 0 8px;">आपका दोस्त जैसे ही App पर पहला काम (Result देखना / Quiz खेलना / Doubt पूछना) करेगा, आपको ₹20 का Gift Card मिलेगा — WhatsApp की मदद से 24 घंटे में भेज दिया जाएगा।</p>
+
+      <div id="referralMobileBox" style="margin-bottom:10px;"></div>
+
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span style="font-size:12px;color:#666;">आपका Code:</span>
+        <span id="myReferralCodeText" style="font-weight:700;color:var(--primary);"></span>
+        <button class="btn btn-outline btn-sm" onclick="shareMyReferralCode()">📤 Link शेयर करें</button>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+        <input type="text" id="referralCodeInput" placeholder="दोस्त का Code डालें (अगर मिला हो)" style="flex:1;min-width:140px;">
+        <button class="btn btn-primary btn-sm" onclick="redeemReferralCode()">Apply करें</button>
+      </div>
+      <div id="referralMsg"></div>
+
+      <div style="font-size:13px;font-weight:600;color:var(--primary-dark);margin-top:12px;">आपके जोड़े हुए दोस्त</div>
+      <div id="referralListWrap" style="font-size:13px;color:#888;margin-top:6px;">अभी तक कोई नहीं जुड़ा।</div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap hidden" id="mainWrap">
+
+  <div class="result-instruction-banner">📋 नीचे दी गई जानकारी भरें और अपना Result देखें</div>
+
+  <div id="adSlotResultTop" class="psb-ad-slot psb-ad-slot-infeed"></div>
+
+  <div class="tabs">
+    <div class="tab-btn active" id="tabTest" onclick="switchTab('test')">🧮 Test रिजल्ट चेक</div>
+    <div class="tab-btn" id="tabPaper" onclick="switchTab('paper')">📝 Mark Sheet / Paper रिजल्ट चेक</div>
+    <div class="tab-btn" id="tabQuiz" onclick="switchTab('quiz')">🔥 Daily Quiz <span id="streakBadgeTab" class="hidden"></span></div>
+    <div class="tab-btn" id="tabLeaderboard" onclick="switchTab('leaderboard')">🏆 Leaderboard</div>
+    <div class="tab-btn" id="tabCalculator" onclick="switchTab('calculator')">🧮 % / GPA Calculator</div>
+    <div class="tab-btn" id="tabDoubts" onclick="switchTab('doubts')">❓ डाउट पूछें</div>
+    <div class="tab-btn" id="tabNotices" onclick="switchTab('notices')">📢 सूचना <span id="studentNoticesCountBadge" class="hidden"></span></div>
+  </div>
+
+  <div id="progressSummaryBar"></div>
+
+  <div id="adSlotSmartLink" class="psb-ad-slot psb-ad-slot-infeed"></div>
+
+  <!-- ================= IMPORTANT NOTICES ================= -->
+  <div id="panelNotices" class="hidden">
+    <div class="card">
+      <h3>📢 महत्वपूर्ण सूचना</h3>
+      <div id="studentNoticesListWrap"></div>
+    </div>
+  </div>
+
+  <!-- ================= DAILY QUIZ + STREAK ================= -->
+  <div id="panelQuiz" class="hidden">
+    <div class="card" id="quizCard"></div>
+  </div>
+
+  <!-- ================= LEADERBOARD ================= -->
+  <div id="panelLeaderboard" class="hidden">
+    <div class="card">
+      <h3>🏆 Leaderboard — टॉप Streaks</h3>
+      <div id="leaderboardWrap"><p style="color:#8892a0;text-align:center;">लोड हो रहा है...</p></div>
+    </div>
+  </div>
+
+  <!-- ================= % / GPA CALCULATOR ================= -->
+  <div id="panelCalculator" class="hidden">
+    <div class="card">
+      <h3>🧮 Percentage Calculator</h3>
+      <div class="row">
+        <div><label>कुल प्राप्त अंक (Obtained)</label><input type="number" id="calcObtained" placeholder="जैसे: 432"></div>
+        <div><label>कुल पूर्णांक (Max Marks)</label><input type="number" id="calcMax" placeholder="जैसे: 500"></div>
+      </div>
+      <button class="btn btn-primary" onclick="calculatePercentage()">Calculate करें</button>
+      <div id="calcResultWrap"></div>
+    </div>
+    <div class="card">
+      <h3>🎓 GPA Calculator (5-Point Scale)</h3>
+      <p style="font-size:12.5px;color:#888;margin-top:-6px;">हर विषय का Grade चुनें — A=5, B=4, C=3, D=2, E=1</p>
+      <div id="gpaSubjectsWrap"></div>
+      <button class="btn btn-outline btn-sm" onclick="addGpaSubjectRow()">+ विषय जोड़ें</button>
+      <button class="btn btn-primary" style="margin-top:10px;" onclick="calculateGpa()">GPA निकालें</button>
+      <div id="gpaResultWrap"></div>
+    </div>
+  </div>
+
+  <!-- ================= DOUBT FORUM (बदलाव 55) ================= -->
+  <div id="panelDoubts" class="hidden">
+    <div class="msg msg-info" style="margin-bottom:14px;">
+      🛡️ कृपया अपना Real Name, Phone Number, Email या कोई Social Media Link शेयर न करें — सुरक्षा के लिए ऐसे Message अपने-आप Block हो जाते हैं। किसी गलत Post को 🚩 Report करें।
+    </div>
+    <div class="card">
+      <h3>❓ अपना सवाल पूछें</h3>
+      <div class="row">
+        <div><label>Class</label><input type="text" id="dqClass" placeholder="जैसे: 10th"></div>
+        <div><label>Subject</label><input type="text" id="dqSubject" placeholder="जैसे: Mathematics"></div>
+      </div>
+      <label>आपका सवाल (ज़्यादा से ज़्यादा 400 अक्षर)</label>
+      <textarea id="dqQuestion" maxlength="400" placeholder="अपना सवाल यहां लिखें..."></textarea>
+      <button class="btn btn-primary" onclick="postDoubt()">सवाल पोस्ट करें</button>
+      <div id="dqMsg"></div>
+    </div>
+    <div class="card">
+      <h3>📋 सवाल देखें</h3>
+      <input type="text" id="dqFilterClass" class="search-box" placeholder="Class से Filter करें (खाली छोड़ें तो सभी दिखेंगे)" oninput="renderDoubtsList()">
+      <div id="doubtsListWrap"><p style="color:#8892a0;text-align:center;">लोड हो रहा है...</p></div>
+    </div>
+  </div>
+
+  <!-- ================= TEST RESULT CHECK ================= -->
+  <div id="panelTest">
+    <div class="card">
+      <h3>🧮 Test Result देखें</h3>
+      <div class="row">
+        <div><label>Teacher Registration Number</label><input type="text" id="trqRegNo" placeholder="जैसे: TCH123456"></div>
+      </div>
+      <div class="row">
+        <div><label>Class</label><input type="text" id="trqClass"></div>
+        <div><label>Section</label><input type="text" id="trqSection"></div>
+      </div>
+      <div id="testResultRecaptcha" style="margin:12px 0;display:flex;justify-content:center;"></div>
+      <button class="btn btn-primary" onclick="searchTestResults()">🔍 Result देखें</button>
+      <div id="trqMsg"></div>
+    </div>
+
+    <div class="card hidden" id="trqResultCard">
+      <h3>📋 Result List</h3>
+      <div id="trqResultWrap"></div>
+      <div id="adSlotTestResultBottom" class="psb-ad-slot psb-ad-slot-infeed"></div>
+    </div>
+  </div>
+
+  <!-- ================= MARKSHEET / PAPER RESULT CHECK ================= -->
+  <div id="panelPaper" class="hidden">
+    <div class="card">
+      <h3>📝 Mark Sheet Result देखें</h3>
+      <div class="row">
+        <div><label>Teacher Registration Number</label><input type="text" id="rcRegNo" placeholder="जैसे: TCH123456"></div>
+      </div>
+      <div class="row">
+        <div><label>Roll No.</label><input type="text" id="rcRollNo"></div>
+        <div><label>Class</label><input type="text" id="rcClass"></div>
+      </div>
+      <div id="marksheetRecaptcha" style="margin:12px 0;display:flex;justify-content:center;"></div>
+      <button class="btn btn-primary" onclick="searchMarksheet()">🔍 Result देखें</button>
+      <div id="rcMsg"></div>
+    </div>
+
+    <div class="card hidden" id="rcResultCard">
+      <div id="rcResultContent"></div>
+      <div id="adSlotMarksheetResultBottom" class="psb-ad-slot psb-ad-slot-infeed"></div>
+      <div class="footer-actions">
+        <button class="btn btn-accent" onclick="printMarksheetResult()">🖨 Print Result</button>
+        <button class="btn btn-outline" onclick="shareMarksheetResult()">📤 Share PDF</button>
+        <button class="btn btn-outline" onclick="shareResultToWhatsApp()" style="background:#25D366;color:#fff;border-color:#25D366;">💬 WhatsApp पर भेजें</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<!-- /mainWrap -->
+
+<div id="printArea"></div>
+
+<footer id="legalFooterBar">
+  <a href="index.html">🏠 Home</a> |
+  <a href="privacy-policy.html" target="_blank" rel="noopener">Privacy Policy</a> |
+  <a href="terms.html" target="_blank" rel="noopener">Terms &amp; Conditions</a> |
+  <a href="refund-policy.html" target="_blank" rel="noopener">Refund Policy</a> |
+  <a href="contact.html" target="_blank" rel="noopener">Contact Us</a>
+  <div style="margin-top:4px;">© 2026 PSB Teacher PRO. All rights reserved.</div>
+</footer>
+
+<div id="stickyAdBar" class="psb-ad-slot hidden"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, query, where, getDocs, doc, onSnapshot, orderBy, setDoc, updateDoc, getDoc, limit, addDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAVccywI4eCzbc1eg6cy2qZaEeYUx0qi2w",
+  authDomain: "chatting-app-2047e.firebaseapp.com",
+  projectId: "chatting-app-2047e",
+  storageBucket: "chatting-app-2047e.firebasestorage.app",
+  messagingSenderId: "641783644815",
+  appId: "1:641783644815:web:9a392923b2213f432ca6fa"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+
+/* =====================================================================
+   reCAPTCHA v2 — Result Search फॉर्म को Bot/Scraping से बचाने के लिए
+   ⚠️ ज़रूरी: नीचे RECAPTCHA_SITE_KEY की जगह अपनी असली Site Key डालें
+   ===================================================================== */
+const RECAPTCHA_SITE_KEY = "YOUR_RECAPTCHA_SITE_KEY_HERE";
+let testResultRecaptchaWidgetId = null;
+let marksheetRecaptchaWidgetId = null;
+
+window.onRecaptchaLoad = function(){
+  if(typeof grecaptcha === "undefined" || !grecaptcha.render){
+    setTimeout(window.onRecaptchaLoad, 200);
+    return;
+  }
+  if(document.getElementById("testResultRecaptcha") && testResultRecaptchaWidgetId === null){
+    testResultRecaptchaWidgetId = grecaptcha.render("testResultRecaptcha", { sitekey: RECAPTCHA_SITE_KEY });
+  }
+  if(document.getElementById("marksheetRecaptcha") && marksheetRecaptchaWidgetId === null){
+    marksheetRecaptchaWidgetId = grecaptcha.render("marksheetRecaptcha", { sitekey: RECAPTCHA_SITE_KEY });
+  }
+};
+window.onRecaptchaLoad();
+
+function verifyRecaptcha(widgetId){
+  if(RECAPTCHA_SITE_KEY === "YOUR_RECAPTCHA_SITE_KEY_HERE") return true;
+  if(typeof grecaptcha === "undefined" || widgetId === null) return false;
+  return !!grecaptcha.getResponse(widgetId);
+}
+function resetRecaptcha(widgetId){
+  if(typeof grecaptcha !== "undefined" && widgetId !== null){
+    try{ grecaptcha.reset(widgetId); }catch(e){}
+  }
+}
+
+/* ===================== DARK / LIGHT THEME TOGGLE ===================== */
+window.toggleTheme = function(){
+  const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+  if(isDark){
+    document.documentElement.removeAttribute("data-theme");
+    localStorage.setItem("psb_theme", "light");
+  } else {
+    document.documentElement.setAttribute("data-theme", "dark");
+    localStorage.setItem("psb_theme", "dark");
+  }
+  updateThemeToggleIcon();
+};
+function updateThemeToggleIcon(){
+  const btn = document.getElementById("themeToggleBtn");
+  if(!btn) return;
+  btn.textContent = document.documentElement.getAttribute("data-theme") === "dark" ? "☀️" : "🌙";
+}
+updateThemeToggleIcon();
+
+/* ===================== GOOGLE LOGIN ===================== */
+const loginCard = document.getElementById("loginCard");
+const userCard = document.getElementById("userCard");
+const mainWrap = document.getElementById("mainWrap");
+const authMsg = document.getElementById("authMsg");
+const userEmailText = document.getElementById("userEmailText");
+
+document.getElementById("googleLoginBtn").addEventListener("click", async () => {
+  authMsg.innerHTML = "";
+  try{
+    await signInWithPopup(auth, googleProvider);
+  }catch(err){
+    authMsg.innerHTML = '<div class="msg msg-error">Login Error: ' + err.message + '</div>';
+  }
+});
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  try{
+    await signOut(auth);
+  }catch(err){
+    authMsg.innerHTML = '<div class="msg msg-error">Logout Error: ' + err.message + '</div>';
+  }
+});
+
+onAuthStateChanged(auth, async (user) => {
+  currentUser = user || null;
+  isBanned = false;
+  if(!user) resetReferralUi();
+  if(presenceHeartbeatTimer){ clearInterval(presenceHeartbeatTimer); presenceHeartbeatTimer = null; }
+
+  if(user){
+    try{
+      // [बदलाव 49] हर लॉगिन पर "studentAppUsers" Collection में एक Profile Upsert होता है ताकि
+      // Admin App देख सके कि कौन Login है, और ज़रूरत पड़ने पर Ban कर सके।
+      const studentRef = doc(db, "studentAppUsers", user.uid);
+      const existing = await getDoc(studentRef).catch(() => null);
+      const existingData = existing && existing.exists() ? existing.data() : null;
+
+      if(existingData && existingData.banned && existingData.banUntil && new Date(existingData.banUntil) > new Date()){
+        isBanned = true;
+        showBannedScreen(existingData);
+      } else {
+        if(existingData && existingData.banned){
+          // Ban का समय पूरा हो चुका — अपने-आप साफ़ कर दें
+          await updateDoc(studentRef, { banned: false, banReason: null, banUntil: null }).catch(()=>{});
+        }
+        await setDoc(studentRef, {
+          email: user.email || "", displayName: user.displayName || "",
+          lastActiveAt: new Date().toISOString(),
+          createdAt: (existingData && existingData.createdAt) || new Date().toISOString()
+        }, { merge: true });
+        startPresenceHeartbeat(user.uid);
+      }
+    }catch(err){ console.warn("student profile sync error:", err.message); }
+  }
+  refreshVisibility();
+});
+
+function showBannedScreen(data){
+  const until = new Date(data.banUntil);
+  const remainingMs = until - new Date();
+  const remainingHrs = Math.ceil(remainingMs / (1000*60*60));
+  const remainingText = remainingHrs >= 24 ? Math.ceil(remainingHrs/24) + " दिन" : remainingHrs + " घंटे";
+  document.getElementById("bannedMessageText").innerHTML =
+    `<b>कारण:</b> ${escapeHtml(data.banReason || "कोई कारण नहीं दिया गया")}<br><br>` +
+    `इसलिए आपको <b>${remainingText}</b> के लिए बैन कर दिया है। यह अपने-आप <b>${until.toLocaleString()}</b> को हट जाएगा।`;
+}
+document.getElementById("bannedLogoutBtn").addEventListener("click", async () => { await signOut(auth); });
+
+let presenceHeartbeatTimer = null;
+function startPresenceHeartbeat(uid){
+  const ping = () => updateDoc(doc(db, "studentAppUsers", uid), { lastActiveAt: new Date().toISOString() }).catch(()=>{});
+  presenceHeartbeatTimer = setInterval(ping, 60000);
+}
+
+/* ---------------------------------------------------------------------
+   ADMIN-CONTROLLED APP SETTINGS (live sync)
+   Doc: appSettings/global — written by AdminApp, read here in realtime.
+   --------------------------------------------------------------------- */
+let currentUser = null;
+let myAdFreeUntil = null; // [बदलाव 51] Refer-3-friends से मिला Ad-Free समय — यहां ऊपर रखा है
+// क्योंकि refreshAdVisibility() नीचे तुरंत (Load होते ही) एक बार चल जाता है।
+let studentAppEnabled = true;
+let isBanned = false;
+
+function refreshVisibility(){
+  const blockedWrap = document.getElementById("blockedWrap");
+  const bannedWrap = document.getElementById("bannedWrap");
+  if(!studentAppEnabled){
+    blockedWrap.classList.remove("hidden");
+    bannedWrap.classList.add("hidden");
+    loginCard.classList.add("hidden");
+    userCard.classList.add("hidden");
+    mainWrap.classList.add("hidden");
+    return;
+  }
+  blockedWrap.classList.add("hidden");
+  if(isBanned){
+    bannedWrap.classList.remove("hidden");
+    loginCard.classList.add("hidden");
+    userCard.classList.add("hidden");
+    mainWrap.classList.add("hidden");
+    return;
+  }
+  bannedWrap.classList.add("hidden");
+  if(currentUser){
+    loginCard.classList.add("hidden");
+    userCard.classList.remove("hidden");
+    mainWrap.classList.remove("hidden");
+    userEmailText.textContent = currentUser.email || currentUser.displayName || "User";
+    ensureReferralCode(); // [बदलाव 51]
+    renderProgressSummary(); // [बदलाव 51]
+  } else {
+    loginCard.classList.remove("hidden");
+    userCard.classList.add("hidden");
+    mainWrap.classList.add("hidden");
+  }
+  refreshAdVisibility();
+}
+
+onSnapshot(doc(db, "appSettings", "global"), (snap) => {
+  const data = snap.exists() ? snap.data() : {};
+  studentAppEnabled = data.studentAppEnabled !== false;
+  refreshVisibility();
+}, (err) => { console.warn("appSettings sync error:", err.message); });
+
+/* ---------------------------------------------------------------------
+   Ad Placement System (Adsterra) — Teacher App में लगे वही Ad Codes यहां भी
+   (एक ही Domain के अलग-अलग पन्नों पर एक जैसे Zone Code दोहराए जा सकते हैं)
+   --------------------------------------------------------------------- */
+// 1) Popunder / Interstitial (Zone ID: 30574824)
+const ADSTERRA_POPUNDER_SCRIPT_HTML = `<script src="https://consciousdunkvastly.com/c1/8e/b5/c18eb58411cc2cb5aa20c24d51747c15.js"><\/script>`;
+// 2) Native/In-content Banner (Zone ID: 30574825) — Result Top पर (सबसे ज्यादा engagement वाली जगह)
+const ADSTERRA_NATIVE_AD_HTML = `<script async="async" data-cfasync="false" src="https://consciousdunkvastly.com/babe92e8cd8bafd36ff10bec1b1eef45/invoke.js"><\/script>
+<div id="container-babe92e8cd8bafd36ff10bec1b1eef45"></div>`;
+// 3) Banner 320x50 (Zone ID: 30574826) — Login व Result Bottom स्लॉट्स पर
+const ADSTERRA_BANNER_320x50_KEY = "bb590076f5633ff07d0ff33fe5b3ae4b";
+// 4) Banner 728x90 (Zone ID: 30574827) — Sticky Bottom Banner पर
+const ADSTERRA_BANNER_728x90_KEY = "4754dd1a282721a1979ab9139c7a35da";
+// 5) Smart Link (Zone ID: 30574828) — Tabs के नीचे एक क्लिक करने योग्य "Sponsored" लिंक की तरह
+const ADSTERRA_SMARTLINK_URL = "https://consciousdunkvastly.com/x7f1223r?key=acb43fd8720e1a807ea43ae0d7f3ee5d";
+// 6) Social Bar (Zone ID: 30574829) — पूरे ऐप में एक बार जुड़ने वाला अपना-आप तैरता (floating) बार
+const ADSTERRA_SOCIALBAR_SCRIPT_HTML = `<script src="https://consciousdunkvastly.com/fe/ed/4f/feed4f649c7f66d448e281e7764edbe7.js"><\/script>`;
+
+// ---- <script> टैग असल में execute हो, इसके लिए DOM से दोबारा बनाकर जोड़ने वाला हेल्पर ----
+// नोट: क्लोज़िंग script टैग जानबूझकर बैकस्लैश के साथ (<\/script>) लिखा गया है — वरना ब्राउज़र
+// इस पूरी .html फ़ाइल के असली <script type="module"> टैग को यहीं (बीच में) गलती से बंद मान लेता।
+function injectAdMarkup(container, htmlString){
+  if(!container) return;
+  container.innerHTML = htmlString; // पहले सामान्य तरीके से DOM बना लेते हैं (Script अभी निष्क्रिय)
+  Array.from(container.querySelectorAll("script")).forEach(oldScript => {
+    const s = document.createElement("script");
+    Array.from(oldScript.attributes).forEach(attr => s.setAttribute(attr.name, attr.value));
+    if(oldScript.textContent) s.textContent = oldScript.textContent;
+    if(!oldScript.hasAttribute("async")) s.async = false;
+    oldScript.parentNode.replaceChild(s, oldScript);
+  });
+}
+
+// ---- atOptions वाले Banner (320x50 / 728x90) को isolated <iframe> में दिखाना ----
+// यह तरीका इस्तेमाल करने से एक ही कोड को कई जगह बिना टकराव के दोहराया जा सकता है,
+// क्योंकि हर <iframe> का अपना अलग "atOptions" स्कोप होता है।
+function renderAtOptionsBannerIframe(container, key, width, height){
+  if(!container) return;
+  const html = `<html><body style="margin:0;padding:0;overflow:hidden;">`
+    + `<script>atOptions=${JSON.stringify({key, format:"iframe", height, width, params:{}})};<\/script>`
+    + `<script src="https://consciousdunkvastly.com/${key}/invoke.js"><\/script>`
+    + `</body></html>`;
+  const iframe = document.createElement("iframe");
+  iframe.srcdoc = html;
+  iframe.width = String(width);
+  iframe.height = String(height);
+  iframe.style.border = "0";
+  iframe.style.maxWidth = "100%";
+  iframe.scrolling = "no";
+  container.innerHTML = "";
+  container.appendChild(iframe);
+}
+
+// ---- सभी Ad Slots को पेज लोड होते ही उनकी जगह पर भरना ----
+(function initExtraAdSlots(){
+  // Native/In-content Banner — Result Top स्लॉट पर (fixed-id वाला <div> पेज पर सिर्फ एक ही बार होना चाहिए)
+  const resultTop = document.getElementById("adSlotResultTop");
+  if(resultTop) injectAdMarkup(resultTop, ADSTERRA_NATIVE_AD_HTML);
+
+  // 320x50 Banner — Login व दोनों Result Bottom स्लॉट्स पर (iframe-safe, दोहराया जा सकता है)
+  ["adSlotLogin", "adSlotTestResultBottom", "adSlotMarksheetResultBottom"].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) renderAtOptionsBannerIframe(el, ADSTERRA_BANNER_320x50_KEY, 320, 50);
+  });
+
+  // 728x90 Banner — Sticky Bottom Bar पर
+  const sticky = document.getElementById("stickyAdBar");
+  if(sticky) renderAtOptionsBannerIframe(sticky, ADSTERRA_BANNER_728x90_KEY, 728, 90);
+
+  // Smart Link — Tabs के नीचे एक साधारण क्लिक करने योग्य लिंक की तरह
+  const smartLinkEl = document.getElementById("adSlotSmartLink");
+  if(smartLinkEl){
+    smartLinkEl.innerHTML = `<a href="${ADSTERRA_SMARTLINK_URL}" target="_blank" rel="noopener sponsored"
+      style="display:block;padding:10px;text-decoration:none;color:var(--primary-dark);font-weight:600;text-align:center;">
+      📢 Sponsored — देखने के लिए यहाँ टैप करें</a>`;
+  }
+
+  document.querySelectorAll(".psb-ad-slot").forEach(el => {
+    const label = document.createElement("div");
+    label.className = "psb-ad-label";
+    label.textContent = "Advertisement";
+    el.appendChild(label);
+  });
+})();
+
+// ---- Sticky Bar और Social Bar सिर्फ तब दिखें जब mainWrap (Login हो चुका, App Blocked न हो) खुला हो ----
+let socialBarInjected = false;
+function refreshAdVisibility(){
+  const isAdFree = myAdFreeUntil && new Date(myAdFreeUntil) > new Date();
+  const showMain = studentAppEnabled && !!currentUser && !isAdFree;
+  const sticky = document.getElementById("stickyAdBar");
+  if(sticky) sticky.classList.toggle("hidden", !showMain);
+  document.querySelectorAll(".psb-ad-slot").forEach(el => {
+    if(el.id === "stickyAdBar") return; // ऊपर अलग से handle हो चुका
+    el.classList.toggle("hidden", !!currentUser && isAdFree);
+  });
+  refreshSocialBar(!showMain);
+}
+refreshAdVisibility(); // शुरुआती स्थिति (Login से पहले Social Bar नहीं जुड़ेगा)
+
+// ---- Social Bar — पूरे ऐप में एक बार जुड़ने वाला फ़्लोटिंग बार ----
+function refreshSocialBar(hide){
+  let wrap = document.getElementById("psbSocialBarSlot");
+  if(hide){
+    if(wrap) wrap.remove();
+    socialBarInjected = false;
+    return;
+  }
+  if(!socialBarInjected){
+    wrap = document.createElement("div");
+    wrap.id = "psbSocialBarSlot";
+    wrap.style.display = "none"; // यह खुद खाली/अदृश्य है; असली widget खुद body में तैरने लगेगा
+    document.body.appendChild(wrap);
+    injectAdMarkup(wrap, ADSTERRA_SOCIALBAR_SCRIPT_HTML);
+    socialBarInjected = true;
+  }
+}
+
+// ---- Popunder/Interstitial ट्रिगर फ़ंक्शन ----
+// जब भी Student "Result देखें" या "Print" दबाए — यह फ़ंक्शन कॉल होता है।
+function triggerPopunderAd(){
+  try{
+    const old = document.getElementById("psbPopunderScriptSlot");
+    if(old) old.remove();
+    const wrap = document.createElement("div");
+    wrap.id = "psbPopunderScriptSlot";
+    wrap.style.display = "none";
+    document.body.appendChild(wrap);
+    injectAdMarkup(wrap, ADSTERRA_POPUNDER_SCRIPT_HTML);
+  }catch(err){ console.warn("Popunder ad trigger नहीं हो पाया:", err.message); }
+}
+
+window.switchTab = function(tab){
+  document.getElementById("tabTest").classList.toggle("active", tab === "test");
+  document.getElementById("tabPaper").classList.toggle("active", tab === "paper");
+  document.getElementById("tabQuiz").classList.toggle("active", tab === "quiz");
+  document.getElementById("tabLeaderboard").classList.toggle("active", tab === "leaderboard");
+  document.getElementById("tabCalculator").classList.toggle("active", tab === "calculator");
+  document.getElementById("tabDoubts").classList.toggle("active", tab === "doubts");
+  document.getElementById("tabNotices").classList.toggle("active", tab === "notices");
+  document.getElementById("panelTest").classList.toggle("hidden", tab !== "test");
+  document.getElementById("panelPaper").classList.toggle("hidden", tab !== "paper");
+  document.getElementById("panelQuiz").classList.toggle("hidden", tab !== "quiz");
+  document.getElementById("panelLeaderboard").classList.toggle("hidden", tab !== "leaderboard");
+  document.getElementById("panelCalculator").classList.toggle("hidden", tab !== "calculator");
+  document.getElementById("panelDoubts").classList.toggle("hidden", tab !== "doubts");
+  document.getElementById("panelNotices").classList.toggle("hidden", tab !== "notices");
+  if(tab === "notices") renderStudentNoticesTab();
+  if(tab === "quiz") renderQuizTab();
+  if(tab === "leaderboard") renderLeaderboardTab();
+  if(tab === "doubts") renderDoubtsList();
+  if(tab === "calculator" && document.getElementById("gpaSubjectsWrap").children.length === 0){
+    addGpaSubjectRow(); addGpaSubjectRow(); addGpaSubjectRow();
+  }
+};
+
+/* =====================================================================
+   महत्वपूर्ण सूचना (Notices) — Teacher App से अलग Firestore Collection
+   "studentAnnouncements" इस्तेमाल होता है ताकि Admin App में दोनों के लिए
+   अलग-अलग Add/Edit का Option हो (जैसा माँगा गया था)।
+   हर Document: { title, message, link, linkButtonText, active, createdAt }
+   ===================================================================== */
+let currentStudentAnnouncements = [];
+onSnapshot(
+  query(collection(db, "studentAnnouncements"), orderBy("createdAt", "desc")),
+  (snap) => {
+    currentStudentAnnouncements = [];
+    snap.forEach(d => {
+      const a = d.data();
+      if(a.active === false) return;
+      currentStudentAnnouncements.push(a);
+    });
+    const badge = document.getElementById("studentNoticesCountBadge");
+    if(badge){
+      if(currentStudentAnnouncements.length){ badge.textContent = currentStudentAnnouncements.length; badge.classList.remove("hidden"); }
+      else badge.classList.add("hidden");
+    }
+    renderStudentNoticesTab();
+  },
+  (err) => console.warn("studentAnnouncements sync error:", err.message)
+);
+
+function renderStudentNoticesTab(){
+  const wrap = document.getElementById("studentNoticesListWrap");
+  if(!wrap) return;
+  if(currentStudentAnnouncements.length === 0){
+    wrap.innerHTML = '<p style="color:#8892a0;text-align:center;margin-top:20px;">अभी तक कोई सूचना नहीं है।</p>';
+    return;
+  }
+  wrap.innerHTML = currentStudentAnnouncements.map(a => `
+    <div class="notice-card">
+      <h4>📢 ${escapeHtml(a.title || "सूचना")}</h4>
+      ${a.message ? `<p>${escapeHtml(a.message)}</p>` : ""}
+      ${a.link ? `<a class="btn btn-outline btn-sm" href="${escapeAttr(a.link)}" target="_blank" rel="noopener">${escapeHtml(a.linkButtonText || "लिंक खोलें")} ↗</a>` : ""}
+      <div class="notice-date">${formatDate(a.createdAt)}</div>
+    </div>
+  `).join("") + `<div id="adSlotStudentNotices" class="psb-ad-slot psb-ad-slot-infeed"></div>`;
+  const adBox = document.getElementById("adSlotStudentNotices");
+  if(adBox) injectAdMarkup(adBox, ADSTERRA_NATIVE_AD_HTML);
+}
+
+/* =====================================================================
+   [बदलाव 51] DAILY QUIZ + STREAK + BADGES + LEADERBOARD — Daily Active
+   Users बढ़ाने के लिए। Question Bank अभी Code में है (Starter Set);
+   आगे चलकर Admin App से भी Manage किया जा सकता है।
+   ===================================================================== */
+const QUIZ_BANK = [
+  {q:"भारत की राजधानी क्या है?", options:["मुंबई","नई दिल्ली","कोलकाता","चेन्नई"], correct:1},
+  {q:"मानव शरीर में हड्डियों की कुल संख्या कितनी होती है?", options:["206","201","210","198"], correct:0},
+  {q:"5 + 7 × 2 का मान क्या होगा?", options:["24","19","17","14"], correct:1},
+  {q:"पृथ्वी सूर्य का एक चक्कर कितने दिनों में पूरा करती है?", options:["30 दिन","365 दिन","24 घंटे","12 महीने"], correct:1},
+  {q:"'रामायण' के रचयिता कौन हैं?", options:["तुलसीदास","वाल्मीकि","कालिदास","वेदव्यास"], correct:1},
+  {q:"जल का रासायनिक सूत्र क्या है?", options:["CO2","H2O","O2","NaCl"], correct:1},
+  {q:"भारत का राष्ट्रीय पक्षी कौन सा है?", options:["तोता","मोर","कबूतर","बाज"], correct:1},
+  {q:"1 किलोमीटर में कितने मीटर होते हैं?", options:["100","1000","10000","10"], correct:1},
+  {q:"सबसे बड़ा ग्रह कौन सा है?", options:["पृथ्वी","मंगल","बृहस्पति","शनि"], correct:2},
+  {q:"स्वतंत्र भारत के प्रथम प्रधानमंत्री कौन थे?", options:["महात्मा गांधी","जवाहरलाल नेहरू","सरदार पटेल","डॉ. राजेंद्र प्रसाद"], correct:1},
+  {q:"त्रिभुज के तीनों कोणों का योग कितना होता है?", options:["90°","180°","270°","360°"], correct:1},
+  {q:"मनुष्य के शरीर का सामान्य तापमान कितना होता है?", options:["37°C","40°C","35°C","39°C"], correct:0},
+  {q:"भारत की सबसे लंबी नदी कौन सी है?", options:["यमुना","गंगा","ब्रह्मपुत्र","गोदावरी"], correct:1},
+  {q:"प्रकाश की गति लगभग कितनी होती है?", options:["3 लाख km/s","3 हज़ार km/s","3 करोड़ km/s","30 हज़ार km/s"], correct:0},
+  {q:"10 का वर्गमूल (Square Root) लगभग क्या है?", options:["3.16","2.5","5","10"], correct:0},
+  {q:"भारत में कुल कितने राज्य हैं?", options:["28","29","27","30"], correct:0},
+  {q:"किस गैस को हम सांस के लिए इस्तेमाल करते हैं?", options:["कार्बन डाइऑक्साइड","ऑक्सीजन","नाइट्रोजन","हाइड्रोजन"], correct:1},
+  {q:"'चार्ल्स डार्विन' किस सिद्धांत के लिए प्रसिद्ध हैं?", options:["गुरुत्वाकर्षण","सापेक्षता","विकासवाद","आवर्त सारणी"], correct:2},
+  {q:"भारत का राष्ट्रीय खेल कौन सा है?", options:["क्रिकेट","हॉकी","फुटबॉल","कबड्डी"], correct:1},
+  {q:"100 का 20% कितना होता है?", options:["10","20","25","15"], correct:1},
+  {q:"मानव हृदय में कितने कक्ष (Chambers) होते हैं?", options:["2","3","4","5"], correct:2},
+  {q:"'ताजमहल' किसने बनवाया था?", options:["अकबर","शाहजहां","हुमायूं","औरंगज़ेब"], correct:1},
+  {q:"किसी संख्या को 0 से गुणा करने पर परिणाम क्या होता है?", options:["वही संख्या","1","0","अनंत"], correct:2},
+  {q:"पानी किस तापमान पर उबलता है (समुद्र तल पर)?", options:["50°C","90°C","100°C","120°C"], correct:2},
+  {q:"'पंचतंत्र' के लेखक कौन हैं?", options:["विष्णु शर्मा","तुलसीदास","सूरदास","कबीर"], correct:0},
+  {q:"12 × 12 का मान क्या है?", options:["124","144","134","154"], correct:1},
+  {q:"सौरमंडल में कुल कितने ग्रह हैं?", options:["7","8","9","10"], correct:1},
+  {q:"भारत का राष्ट्रीय फूल कौन सा है?", options:["गुलाब","कमल","सूरजमुखी","चमेली"], correct:1},
+  {q:"एक सम वर्ष (Leap Year) में कितने दिन होते हैं?", options:["364","365","366","367"], correct:2},
+  {q:"मानव शरीर की सबसे बड़ी ग्रंथि कौन सी है?", options:["थायरॉइड","लिवर (यकृत)","किडनी","अग्न्याशय"], correct:1}
+];
+
+function seededShuffle(arr, seedStr){
+  let seed = 0;
+  for(let i=0;i<seedStr.length;i++) seed += seedStr.charCodeAt(i) * (i+7);
+  const a = [...arr];
+  for(let i = a.length - 1; i > 0; i--){
+    seed = (seed * 9301 + 49297) % 233280;
+    const j = Math.floor((seed / 233280) * (i+1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function getTodayStr(){ return new Date().toISOString().slice(0,10); }
+function getTodaysQuizQuestions(){ return seededShuffle(QUIZ_BANK, getTodayStr()).slice(0, 5); }
+function getWeekKey(d){
+  const date = new Date(d);
+  const firstJan = new Date(date.getFullYear(),0,1);
+  const days = Math.floor((date - firstJan) / 86400000);
+  const week = Math.ceil((days + firstJan.getDay()+1)/7);
+  return date.getFullYear() + "-W" + week;
+}
+
+const STREAK_BADGES = [
+  { days:3,   id:"streak3",   label:"🔥 3-Day Streak" },
+  { days:7,   id:"streak7",   label:"🔥 7-Day Streak" },
+  { days:15,  id:"streak15",  label:"⭐ 15-Day Streak" },
+  { days:30,  id:"streak30",  label:"🏅 30-Day Streak" },
+  { days:100, id:"streak100", label:"👑 100-Day Streak" }
+];
+
+let quizAnswers = [], quizQuestions = [], quizCurrentIndex = 0;
+
+async function getMyStudentDoc(){
+  if(!currentUser) return null;
+  try{
+    const snap = await getDoc(doc(db, "studentAppUsers", currentUser.uid));
+    return snap.exists() ? snap.data() : null;
+  }catch(e){ return null; }
+}
+
+async function renderQuizTab(){
+  const card = document.getElementById("quizCard");
+  card.innerHTML = "<p style='color:#8892a0;text-align:center;'>लोड हो रहा है...</p>";
+  if(!currentUser){ card.innerHTML = "<p>कृपया पहले Login करें।</p>"; return; }
+  const data = await getMyStudentDoc() || {};
+  const today = getTodayStr();
+
+  if(data.lastQuizDate === today){
+    card.innerHTML = `
+      <h3>✅ आज का Quiz पूरा हो गया!</h3>
+      <div class="streak-display"><div class="streak-num">🔥 ${data.streakCount||0}</div><div class="streak-lbl">दिन की Streak</div></div>
+      <p style="text-align:center;color:#666;">कल फिर आइए — नए 5 सवाल आपका इंतज़ार करेंगे!</p>
+      ${renderBadgesHtml(data.badges||[])}
+      <button class="btn btn-outline" style="width:100%;margin-top:14px;background:#25D366;color:#fff;border-color:#25D366;" onclick="shareQuizImageCard()">📸 आज के सवाल का Card बनाएं और शेयर करें</button>
+    `;
+    updateStreakTabBadge(data.streakCount||0);
+    return;
+  }
+
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+  const streakAtRisk = data.lastQuizDate && data.lastQuizDate !== yesterday && data.lastQuizDate !== today;
+
+  quizQuestions = getTodaysQuizQuestions();
+  quizAnswers = new Array(quizQuestions.length).fill(null);
+  quizCurrentIndex = 0;
+
+  card.innerHTML = `
+    ${streakAtRisk ? `
+      <div class="msg msg-error" style="margin-bottom:14px;">
+        ⚠️ आपकी <b>${data.streakCount||0} दिन की Streak</b> टूटने वाली है! कल Quiz छूट गया था।
+        <br><button class="btn btn-accent btn-sm" style="margin-top:8px;" onclick="watchAdToSaveStreak()">📺 Ad देखकर Streak बचाएं</button>
+      </div>
+    ` : ""}
+    <h3>🔥 आज का Daily Quiz</h3>
+    <p style="color:#666;font-size:13px;">रोज़ 5 सवाल हल करें और अपनी Streak बनाए रखें!</p>
+    <button class="btn btn-outline" style="width:100%;margin-bottom:14px;background:#25D366;color:#fff;border-color:#25D366;" onclick="shareQuizImageCard()">📸 आज के सवाल का Card बनाएं और शेयर करें</button>
+    <div id="quizQuestionWrap"></div>
+  `;
+  renderQuizQuestion();
+}
+
+function renderQuizQuestion(){
+  const wrap = document.getElementById("quizQuestionWrap");
+  const q = quizQuestions[quizCurrentIndex];
+  wrap.innerHTML = `
+    <div class="quiz-progress">सवाल ${quizCurrentIndex+1} / ${quizQuestions.length}</div>
+    <div class="quiz-question">${escapeHtml(q.q)}</div>
+    <div class="quiz-options">${q.options.map((opt,i) => `<button class="quiz-option-btn" onclick="selectQuizAnswer(${i})">${escapeHtml(opt)}</button>`).join("")}</div>
+  `;
+}
+
+window.selectQuizAnswer = function(idx){
+  quizAnswers[quizCurrentIndex] = idx;
+  if(quizCurrentIndex < quizQuestions.length - 1){ quizCurrentIndex++; renderQuizQuestion(); }
+  else submitQuiz();
+};
+
+async function submitQuiz(){
+  markFirstActivityIfNeeded(); // [Refer to Earn] Quiz पूरा करना = असली काम
+  const card = document.getElementById("quizCard");
+  card.innerHTML = "<p style='color:#8892a0;text-align:center;'>जमा हो रहा है...</p>";
+
+  let correctCount = 0;
+  quizQuestions.forEach((q,i) => { if(quizAnswers[i] === q.correct) correctCount++; });
+
+  const data = await getMyStudentDoc() || {};
+  const today = getTodayStr();
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+  const wasContinuing = data.lastQuizDate === yesterday;
+  const newStreak = wasContinuing ? (data.streakCount||0) + 1 : 1;
+  const newLongest = Math.max(newStreak, data.longestStreak||0);
+  const pointsEarned = correctCount * 10 + 20;
+  const newPoints = (data.points||0) + pointsEarned;
+  const existingBadges = data.badges || [];
+  const newlyEarnedBadges = STREAK_BADGES.filter(b => newStreak >= b.days && !existingBadges.includes(b.id)).map(b => b.id);
+  const updatedBadges = [...existingBadges, ...newlyEarnedBadges];
+
+  const currentWeek = getWeekKey(new Date());
+  let weekly = (data.weeklyStats && data.weeklyStats.weekKey === currentWeek) ? data.weeklyStats : { weekKey: currentWeek, quizzes:0, resultsChecked:0 };
+  weekly.quizzes = (weekly.quizzes||0) + 1;
+
+  await updateDoc(doc(db, "studentAppUsers", currentUser.uid), {
+    lastQuizDate: today, streakCount: newStreak, longestStreak: newLongest,
+    points: newPoints, totalQuizzesTaken: (data.totalQuizzesTaken||0) + 1,
+    totalCorrectAnswers: (data.totalCorrectAnswers||0) + correctCount,
+    badges: updatedBadges, weeklyStats: weekly
+  });
+
+  const newBadgeLabels = STREAK_BADGES.filter(b => newlyEarnedBadges.includes(b.id)).map(b => b.label);
+  card.innerHTML = `
+    <h3>🎉 Quiz पूरा हुआ!</h3>
+    <div style="text-align:center;padding:14px 0;">
+      <div style="font-size:32px;font-weight:800;color:var(--primary);">${correctCount} / ${quizQuestions.length}</div>
+      <div style="color:#666;">सही जवाब</div>
+    </div>
+    <div class="streak-display"><div class="streak-num">🔥 ${newStreak}</div><div class="streak-lbl">दिन की Streak</div></div>
+    <p style="text-align:center;color:#1e8e5a;font-weight:600;">+${pointsEarned} Points मिले!</p>
+    ${newBadgeLabels.length ? `<div class="msg msg-success" style="text-align:center;">🎖️ नया Badge मिला: ${newBadgeLabels.join(", ")}</div>` : ""}
+    ${renderBadgesHtml(updatedBadges)}
+    <button class="btn btn-outline" style="width:100%;margin-top:10px;" onclick="switchTab('leaderboard')">🏆 Leaderboard देखें</button>
+  `;
+  updateStreakTabBadge(newStreak);
+  renderProgressSummary();
+}
+
+window.watchAdToSaveStreak = function(){
+  // [ईमानदार नोट] यह एक Simplified Approximation है — असली Server-Verified Rewarded Video
+  // Ad नहीं है (उसके लिए Ad Network के Rewarded SDK + Postback Server की ज़रूरत होती है, जो
+  // अभी इस Setup में नहीं है)। यहां मौजूदा Ad दिखाकर, वापस आने पर Streak बचा दी जाती है।
+  triggerPopunderAd();
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = "⏳ Ad खुल रहा है...";
+  setTimeout(async () => {
+    await updateDoc(doc(db, "studentAppUsers", currentUser.uid), {
+      lastQuizDate: new Date(Date.now() - 86400000).toISOString().slice(0,10)
+    });
+    renderQuizTab();
+  }, 2500);
+};
+
+function renderBadgesHtml(badges){
+  if(!badges || badges.length === 0) return "";
+  const labels = STREAK_BADGES.filter(b => badges.includes(b.id));
+  if(labels.length === 0) return "";
+  return `<div class="badges-row">${labels.map(b => `<span class="badge-chip">${b.label}</span>`).join("")}</div>`;
+}
+function updateStreakTabBadge(streak){
+  const el = document.getElementById("streakBadgeTab");
+  if(!el) return;
+  if(streak > 0){ el.textContent = streak; el.classList.remove("hidden"); }
+  else el.classList.add("hidden");
+}
+
+/* =====================================================================
+   [बदलाव 54] DAILY QUIZ WHATSAPP IMAGE CARD — आज के सवाल का एक Branded,
+   Shareable Image Card (Canvas से बनता है) — जवाब नहीं दिखाया जाता, ताकि
+   देखने वाला खुद App खोलकर जवाब देना चाहे (Viral Acquisition)।
+   ===================================================================== */
+function roundRectPath(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w, y, x+w, y+h, r);
+  ctx.arcTo(x+w, y+h, x, y+h, r);
+  ctx.arcTo(x, y+h, x, y, r);
+  ctx.arcTo(x, y, x+w, y, r);
+  ctx.closePath();
+}
+function wrapTextLines(ctx, text, maxWidth){
+  const words = text.split(" ");
+  let line = "", lines = [];
+  words.forEach(word => {
+    const test = line + word + " ";
+    if(ctx.measureText(test).width > maxWidth && line !== ""){ lines.push(line.trim()); line = word + " "; }
+    else line = test;
+  });
+  lines.push(line.trim());
+  return lines;
+}
+
+async function generateQuizShareImage(){
+  const q = getTodaysQuizQuestions()[0];
+  const data = await getMyStudentDoc() || {};
+  const streak = data.streakCount || 0;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080; canvas.height = 1350;
+  const ctx = canvas.getContext("2d");
+
+  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  grad.addColorStop(0, "#1e6b4d"); grad.addColorStop(1, "#0f3d2b");
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "rgba(255,255,255,0.06)";
+  ctx.beginPath(); ctx.arc(950, 150, 220, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(90, 1260, 190, 0, Math.PI*2); ctx.fill();
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 56px Arial, sans-serif";
+  ctx.fillText("🏆 PSB Student App", canvas.width/2, 130);
+  ctx.font = "32px Arial, sans-serif";
+  ctx.fillStyle = "#c8e6d9";
+  ctx.fillText("🔥 आज का सवाल — Daily Quiz", canvas.width/2, 190);
+
+  ctx.fillStyle = "rgba(255,255,255,0.96)";
+  roundRectPath(ctx, 70, 250, canvas.width-140, 300, 24);
+  ctx.fill();
+
+  ctx.fillStyle = "#144d38";
+  ctx.font = "bold 42px Arial, sans-serif";
+  const qLines = wrapTextLines(ctx, q.q, 880);
+  const qStartY = 400 - ((qLines.length-1) * 54)/2;
+  qLines.forEach((l,i) => ctx.fillText(l, canvas.width/2, qStartY + i*54));
+
+  let optY = 610;
+  const optLabels = ["A","B","C","D"];
+  ctx.textAlign = "left";
+  q.options.forEach((opt,i) => {
+    ctx.fillStyle = "rgba(255,255,255,0.15)";
+    roundRectPath(ctx, 90, optY, canvas.width-180, 92, 16);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 36px Arial, sans-serif";
+    ctx.fillText(optLabels[i] + ".  " + opt, 130, optY + 60);
+    optY += 112;
+  });
+
+  ctx.textAlign = "center";
+  if(streak > 0){
+    ctx.font = "bold 38px Arial, sans-serif";
+    ctx.fillStyle = "#ffd580";
+    ctx.fillText("🔥 मेरी Streak: " + streak + " दिन!", canvas.width/2, optY + 50);
+    optY += 50;
+  }
+
+  ctx.font = "bold 34px Arial, sans-serif";
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText("अपना जवाब चेक करें 👇", canvas.width/2, canvas.height - 130);
+  ctx.font = "26px Arial, sans-serif";
+  ctx.fillStyle = "#c8e6d9";
+  ctx.fillText(location.origin + location.pathname, canvas.width/2, canvas.height - 80);
+
+  return canvas;
+}
+
+window.shareQuizImageCard = async function(){
+  const btn = event.target;
+  const originalText = btn.textContent;
+  btn.disabled = true; btn.textContent = "⏳ Card बन रहा है...";
+  try{
+    const canvas = await generateQuizShareImage();
+    canvas.toBlob(async (blob) => {
+      btn.disabled = false; btn.textContent = originalText;
+      if(!blob) return;
+      const file = new File([blob], "PSB-Daily-Quiz.png", { type: "image/png" });
+      if(navigator.canShare && navigator.canShare({ files: [file] })){
+        try{ await navigator.share({ files: [file], title: "आज का सवाल - PSB Student App", text: "आज के Quiz में शामिल हों! 🔥" }); }
+        catch(e){ /* teacher/student ने Share Sheet बंद कर दी */ }
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = "PSB-Daily-Quiz.png";
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        alert("इस डिवाइस पर सीधा Share उपलब्ध नहीं है — Image Download कर दी गई है, वहां से WhatsApp Status पर लगा सकते हैं।");
+      }
+    }, "image/png", 0.95);
+  }catch(err){
+    btn.disabled = false; btn.textContent = originalText;
+    alert("Card बनाने में समस्या आई: " + err.message);
+  }
+};
+
+/* ---- LEADERBOARD ---- */
+async function renderLeaderboardTab(){
+  const wrap = document.getElementById("leaderboardWrap");
+  wrap.innerHTML = "<p style='color:#8892a0;text-align:center;'>लोड हो रहा है...</p>";
+  try{
+    const snap = await getDocs(query(collection(db,"studentAppUsers"), orderBy("points","desc"), limit(20)));
+    const list = snap.docs.map(d => ({ id:d.id, ...d.data() })).filter(s => (s.points||0) > 0);
+    if(list.length === 0){ wrap.innerHTML = "<p style='color:#8892a0;text-align:center;'>अभी कोई Score नहीं है — सबसे पहले Quiz खेलने वाले बनें!</p>"; return; }
+    wrap.innerHTML = list.map((s,i) => `
+      <div class="leaderboard-row ${currentUser && s.id === currentUser.uid ? 'leaderboard-row-me' : ''}">
+        <div class="lb-rank">${i===0?"🥇":i===1?"🥈":i===2?"🥉":(i+1)}</div>
+        <div class="lb-name">${escapeHtml(s.displayName || "Student")} ${currentUser && s.id === currentUser.uid ? "(आप)" : ""}</div>
+        <div class="lb-streak">🔥 ${s.streakCount||0}</div>
+        <div class="lb-points">${s.points||0} pts</div>
+      </div>
+    `).join("");
+  }catch(err){
+    wrap.innerHTML = `<p style="color:#888;">Leaderboard लोड नहीं हो पाया: ${escapeHtml(err.message)}</p>`;
+  }
+}
+
+/* ---- % / GPA CALCULATOR ---- */
+window.calculatePercentage = function(){
+  const obtained = parseFloat(document.getElementById("calcObtained").value);
+  const max = parseFloat(document.getElementById("calcMax").value);
+  const wrap = document.getElementById("calcResultWrap");
+  if(isNaN(obtained) || isNaN(max) || max <= 0){ wrap.innerHTML = '<div class="msg msg-error">कृपया सही अंक डालें</div>'; return; }
+  const pct = (obtained/max*100);
+  let grade="F", remark="और मेहनत करें";
+  if(pct>=90){grade="A+";remark="उत्कृष्ट! 🌟";}
+  else if(pct>=80){grade="A";remark="बहुत बढ़िया!";}
+  else if(pct>=70){grade="B+";remark="अच्छा प्रदर्शन!";}
+  else if(pct>=60){grade="B";remark="ठीक-ठाक, और सुधार हो सकता है";}
+  else if(pct>=50){grade="C";remark="पास हैं, मेहनत जारी रखें";}
+  else if(pct>=33){grade="D";remark="पास, पर मेहनत बढ़ानी होगी";}
+  wrap.innerHTML = `<div class="calc-result-box"><div class="calc-pct">${pct.toFixed(2)}%</div><div class="calc-grade">Grade: ${grade}</div><div class="calc-remark">${remark}</div></div>`;
+};
+
+let gpaRowCount = 0;
+window.addGpaSubjectRow = function(){
+  gpaRowCount++;
+  const wrap = document.getElementById("gpaSubjectsWrap");
+  const row = document.createElement("div");
+  row.className = "row gpa-row"; row.id = "gpaRow" + gpaRowCount;
+  row.innerHTML = `
+    <input type="text" placeholder="विषय का नाम">
+    <select>
+      <option value="5">A (5)</option><option value="4">B (4)</option>
+      <option value="3" selected>C (3)</option><option value="2">D (2)</option><option value="1">E (1)</option>
+    </select>
+    <button class="btn btn-outline btn-sm" onclick="document.getElementById('gpaRow${gpaRowCount}').remove()">✕</button>
+  `;
+  wrap.appendChild(row);
+};
+window.calculateGpa = function(){
+  const rows = document.getElementById("gpaSubjectsWrap").querySelectorAll(".gpa-row");
+  let total = 0, count = 0;
+  rows.forEach(row => { const sel = row.querySelector("select"); if(sel){ total += parseFloat(sel.value); count++; } });
+  const resultWrap = document.getElementById("gpaResultWrap");
+  if(count === 0){ resultWrap.innerHTML = '<div class="msg msg-error">कृपया कम से कम एक विषय जोड़ें</div>'; return; }
+  resultWrap.innerHTML = `<div class="calc-result-box"><div class="calc-pct">${(total/count).toFixed(2)}</div><div class="calc-grade">आपका GPA (5-Point Scale)</div></div>`;
+};
+
+/* =====================================================================
+   [बदलाव 55] DOUBT FORUM — Students आपस में सवाल-जवाब कर सकें।
+   सुरक्षा के लिए जानबूझकर शामिल किया गया:
+     - असली Google नाम कभी नहीं दिखता — सिर्फ एक Pseudonym (जैसे "Student-A1B2")
+     - Phone Number / Email / Link / Social Media Handle वाले Message अपने-आप Block
+     - रोज़ की सीमा (5 सवाल, 15 जवाब) ताकि Spam न हो सके
+     - हर Post पर 🚩 Report — रिपोर्ट "doubtReports" Collection में जाती है
+   ⚠️ ज़रूरी: यह एक हल्का (Client-Side) Safety Net है, पूरी तरह भरोसेमंद Content
+   Moderation नहीं। असली गलत Content को हटाने के लिए Admin App में इन Reports को
+   देखने/Delete करने का Tool होना ज़रूरी है — अभी वो शामिल नहीं है।
+   Firestore Collections:
+     "doubts"       — { studentUid, pseudonym, class, subject, question, answerCount, createdAt }
+     "doubtAnswers" — { doubtId, studentUid, pseudonym, answer, createdAt }
+     "doubtReports" — { targetType, targetId, reportedBy, status, createdAt }
+   ===================================================================== */
+function getMyPseudonym(uid){ return "Student-" + uid.slice(0,4).toUpperCase(); }
+
+function containsUnsafeContent(text){
+  const stripped = text.replace(/[\s\-().]/g, "");
+  if(/\d{10}/.test(stripped)) return "इसमें Phone Number जैसा कुछ दिख रहा है";
+  if(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(text)) return "इसमें Email जैसा कुछ दिख रहा है";
+  if(/https?:\/\/|www\.|\.com\b|\.in\b/i.test(text)) return "इसमें Link जैसा कुछ दिख रहा है";
+  if(/\b(whatsapp|instagram|telegram|snapchat|facebook)\b/i.test(text)) return "इसमें Social Media का ज़िक्र है";
+  return null;
+}
+
+const DOUBT_DAILY_LIMIT = 5;
+const ANSWER_DAILY_LIMIT = 15;
+
+async function getTodayDoubtCounts(){
+  const data = await getMyStudentDoc() || {};
+  const today = getTodayStr();
+  if(data.doubtActivityDate !== today) return { doubts: 0, answers: 0 };
+  return { doubts: data.doubtsPostedToday||0, answers: data.answersPostedToday||0 };
+}
+async function bumpDoubtActivity(field){
+  const counts = await getTodayDoubtCounts();
+  counts[field] = (counts[field]||0) + 1;
+  await updateDoc(doc(db,"studentAppUsers",currentUser.uid), {
+    doubtActivityDate: getTodayStr(), doubtsPostedToday: counts.doubts, answersPostedToday: counts.answers
+  }).catch(()=>{});
+}
+
+window.postDoubt = async function(){
+  const cls = document.getElementById("dqClass").value.trim();
+  const subject = document.getElementById("dqSubject").value.trim();
+  const question = document.getElementById("dqQuestion").value.trim();
+  const msgBox = document.getElementById("dqMsg");
+  msgBox.innerHTML = "";
+  if(!currentUser){ msgBox.innerHTML = '<div class="msg msg-error">कृपया पहले Login करें</div>'; return; }
+  if(!cls || !subject || !question){ msgBox.innerHTML = '<div class="msg msg-error">कृपया Class, Subject और सवाल तीनों भरें</div>'; return; }
+  if(question.length < 10){ msgBox.innerHTML = '<div class="msg msg-error">कृपया सवाल थोड़ा विस्तार से लिखें</div>'; return; }
+  const unsafe = containsUnsafeContent(cls + " " + subject + " " + question);
+  if(unsafe){ msgBox.innerHTML = `<div class="msg msg-error">🛡️ यह Post नहीं भेजी जा सकी — ${unsafe}। कृपया सिर्फ अपना पढ़ाई से जुड़ा सवाल लिखें।</div>`; return; }
+
+  const counts = await getTodayDoubtCounts();
+  if(counts.doubts >= DOUBT_DAILY_LIMIT){
+    msgBox.innerHTML = `<div class="msg msg-error">आज आप ${DOUBT_DAILY_LIMIT} सवाल पोस्ट कर चुके हैं — कल फिर कोशिश करें</div>`;
+    return;
+  }
+
+  try{
+    markFirstActivityIfNeeded(); // [Refer to Earn] Doubt पोस्ट करना = असली काम
+    await addDoc(collection(db,"doubts"), {
+      studentUid: currentUser.uid, pseudonym: getMyPseudonym(currentUser.uid),
+      class: cls, subject, question, answerCount: 0, createdAt: new Date().toISOString()
+    });
+    await bumpDoubtActivity("doubts");
+    document.getElementById("dqQuestion").value = "";
+    msgBox.innerHTML = '<div class="msg msg-success">सवाल पोस्ट हो गया ✅</div>';
+    document.getElementById("dqFilterClass").value = cls;
+    renderDoubtsList();
+  }catch(err){
+    msgBox.innerHTML = '<div class="msg msg-error">Error: ' + err.message + '</div>';
+  }
+};
+
+window.renderDoubtsList = async function(){
+  const wrap = document.getElementById("doubtsListWrap");
+  const filterClass = (document.getElementById("dqFilterClass").value || "").trim().toLowerCase();
+  wrap.innerHTML = "<p style='color:#8892a0;text-align:center;'>लोड हो रहा है...</p>";
+  try{
+    const snap = await getDocs(query(collection(db,"doubts"), orderBy("createdAt","desc"), limit(50)));
+    const list = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    const filtered = filterClass ? list.filter(d => (d.class||"").toLowerCase().includes(filterClass)) : list;
+    if(filtered.length === 0){ wrap.innerHTML = "<p style='color:#8892a0;text-align:center;'>अभी कोई सवाल नहीं है — पहला सवाल आप पूछें!</p>"; return; }
+    wrap.innerHTML = filtered.map(d => `
+      <div class="doubt-card" id="doubtCard_${d.id}">
+        <div class="doubt-meta"><span>${escapeHtml(d.pseudonym)} • Class ${escapeHtml(d.class)} • ${escapeHtml(d.subject)}</span><span>${formatDate(d.createdAt)}</span></div>
+        <div class="doubt-q">${escapeHtml(d.question)}</div>
+        <div class="doubt-actions">
+          <button onclick="toggleDoubtAnswers('${d.id}')">💬 ${d.answerCount||0} जवाब</button>
+          <button onclick="reportContent('doubt','${d.id}')">🚩 Report</button>
+        </div>
+        <div class="doubt-answers-wrap hidden" id="doubtAnswers_${d.id}"></div>
+      </div>
+    `).join("");
+  }catch(err){
+    wrap.innerHTML = `<p style="color:#888;">Load नहीं हो पाया: ${escapeHtml(err.message)}</p>`;
+  }
+};
+
+window.toggleDoubtAnswers = async function(doubtId){
+  const wrap = document.getElementById("doubtAnswers_" + doubtId);
+  if(!wrap.classList.contains("hidden")){ wrap.classList.add("hidden"); return; }
+  wrap.classList.remove("hidden");
+  await loadAndRenderAnswers(doubtId);
+};
+
+async function loadAndRenderAnswers(doubtId){
+  const wrap = document.getElementById("doubtAnswers_" + doubtId);
+  wrap.innerHTML = "<p style='color:#8892a0;font-size:12px;'>लोड हो रहा है...</p>";
+  try{
+    const snap = await getDocs(query(collection(db,"doubtAnswers"), where("doubtId","==",doubtId), orderBy("createdAt","asc")));
+    const answers = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    const answersHtml = answers.map(a => `
+      <div class="doubt-answer-row">
+        ${escapeHtml(a.answer)}
+        <div class="doubt-answer-meta">${escapeHtml(a.pseudonym)} • ${formatDate(a.createdAt)} &nbsp;
+          <button onclick="reportContent('answer','${a.id}')" style="background:none;border:none;color:#999;cursor:pointer;padding:0;font-size:10.5px;">🚩 Report</button>
+        </div>
+      </div>
+    `).join("") || "<p style='color:#8892a0;font-size:12px;'>अभी तक कोई जवाब नहीं — पहला जवाब आप दें!</p>";
+    wrap.innerHTML = answersHtml + `
+      <div class="doubt-answer-form">
+        <textarea id="answerInput_${doubtId}" placeholder="अपना जवाब लिखें..." maxlength="400"></textarea>
+        <button class="btn btn-primary btn-sm" onclick="postAnswer('${doubtId}')">भेजें</button>
+      </div>
+      <div id="answerMsg_${doubtId}"></div>
+    `;
+  }catch(err){
+    wrap.innerHTML = `<p style="color:#888;font-size:12px;">Load नहीं हो पाया: ${escapeHtml(err.message)}</p>`;
+  }
+}
+
+window.postAnswer = async function(doubtId){
+  const input = document.getElementById("answerInput_" + doubtId);
+  const msgBox = document.getElementById("answerMsg_" + doubtId);
+  const answer = input.value.trim();
+  msgBox.innerHTML = "";
+  if(!currentUser){ msgBox.innerHTML = '<div class="msg msg-error">कृपया पहले Login करें</div>'; return; }
+  if(!answer || answer.length < 3){ msgBox.innerHTML = '<div class="msg msg-error">कृपया जवाब लिखें</div>'; return; }
+  const unsafe = containsUnsafeContent(answer);
+  if(unsafe){ msgBox.innerHTML = `<div class="msg msg-error">🛡️ यह Post नहीं भेजी जा सकी — ${unsafe}</div>`; return; }
+
+  const counts = await getTodayDoubtCounts();
+  if(counts.answers >= ANSWER_DAILY_LIMIT){
+    msgBox.innerHTML = `<div class="msg msg-error">आज आप ${ANSWER_DAILY_LIMIT} जवाब दे चुके हैं — कल फिर कोशिश करें</div>`;
+    return;
+  }
+
+  try{
+    await addDoc(collection(db,"doubtAnswers"), {
+      doubtId, studentUid: currentUser.uid, pseudonym: getMyPseudonym(currentUser.uid),
+      answer, createdAt: new Date().toISOString()
+    });
+    const doubtRef = doc(db,"doubts",doubtId);
+    const doubtSnap = await getDoc(doubtRef);
+    let newCount = 1;
+    if(doubtSnap.exists()){
+      newCount = (doubtSnap.data().answerCount||0) + 1;
+      await updateDoc(doubtRef, { answerCount: newCount });
+    }
+    await bumpDoubtActivity("answers");
+    input.value = "";
+    await loadAndRenderAnswers(doubtId);
+    const doubtCard = document.getElementById("doubtCard_" + doubtId);
+    if(doubtCard){
+      const countBtn = doubtCard.querySelector(".doubt-actions button");
+      if(countBtn) countBtn.textContent = "💬 " + newCount + " जवाब";
+    }
+  }catch(err){
+    msgBox.innerHTML = '<div class="msg msg-error">Error: ' + err.message + '</div>';
+  }
+};
+
+window.reportContent = async function(targetType, targetId){
+  if(!currentUser){ alert("कृपया पहले Login करें"); return; }
+  if(!confirm("क्या आप इस Post को गलत/अनुचित होने की Report करना चाहते हैं?")) return;
+  try{
+    await addDoc(collection(db,"doubtReports"), {
+      targetType, targetId, reportedBy: currentUser.uid, status: "pending", createdAt: new Date().toISOString()
+    });
+    alert("Report भेज दी गई है — धन्यवाद।");
+  }catch(err){
+    alert("Error: " + err.message);
+  }
+};
+
+/* ---- PERSONAL PROGRESS SUMMARY ---- */
+async function renderProgressSummary(){
+  const bar = document.getElementById("progressSummaryBar");
+  if(!bar) return;
+  if(!currentUser){ bar.innerHTML = ""; return; }
+  const data = await getMyStudentDoc() || {};
+  const currentWeek = getWeekKey(new Date());
+  const weekly = (data.weeklyStats && data.weeklyStats.weekKey === currentWeek) ? data.weeklyStats : { quizzes:0, resultsChecked:0 };
+  bar.innerHTML = `<div class="progress-summary-card">📊 इस हफ्ते: <b>${weekly.quizzes||0}</b> Quiz खेले, <b>${weekly.resultsChecked||0}</b> Result चेक किए${data.streakCount ? ' &nbsp;|&nbsp; 🔥 <b>'+data.streakCount+'</b> दिन Streak' : ''}</div>`;
+  updateStreakTabBadge(data.streakCount||0);
+}
+async function incrementWeeklyCounter(field){
+  if(!currentUser) return;
+  markFirstActivityIfNeeded(); // [Refer to Earn] Result मिलना = असली काम
+  const data = await getMyStudentDoc() || {};
+  const currentWeek = getWeekKey(new Date());
+  let weekly = (data.weeklyStats && data.weeklyStats.weekKey === currentWeek) ? data.weeklyStats : { weekKey: currentWeek, quizzes:0, resultsChecked:0 };
+  weekly[field] = (weekly[field]||0) + 1;
+  weekly.weekKey = currentWeek;
+  try{
+    await updateDoc(doc(db,"studentAppUsers",currentUser.uid), { weeklyStats: weekly, resultsCheckedTotal: (data.resultsCheckedTotal||0) + (field==='resultsChecked'?1:0) });
+  }catch(e){}
+  renderProgressSummary();
+}
+
+/* =====================================================================
+   🎁 REFER TO EARN (₹20 Gift Card) — Teacher App जैसा ही
+   ---------------------------------------------------------------------
+   पुराना "3 दोस्त = 7 दिन Ad-Free" वाला इनाम बंद कर दिया गया है। (जिन्हें पहले से Ad-Free समय मिल
+   चुका है, वह उसकी तारीख तक चलता रहेगा — नया इनाम अब नहीं मिलता।)
+   Gift Card WhatsApp पर भेजा जाता है, इसलिए Referrer का WhatsApp नंबर ज़रूरी है — जब तक नंबर Save
+   न हो, Code Share नहीं होता और उसके Code को कोई Apply भी नहीं कर सकता।
+   ===================================================================== */
+const REFERRAL_GIFTCARD_AMOUNT = 20;
+
+// ---- Short Buy के साझा Gift Card API को Request भेजना (Teacher/Headmaster/Student में एक जैसा) ----
+// हर Referral के लिए Document का ID तय ("ref_<referred-id>") रखा गया है — इसलिए भले ही यही Function
+// दो बार या दो Device से चल जाए, Short Buy में एक ही Request बनेगी, Duplicate Gift Card नहीं।
+const SHORTBUY_GIFT_API_URL = "https://firestore.googleapis.com/v1/projects/psb-chtting/databases/(default)/documents/apiGiftRequests";
+const SHORTBUY_WEB_API_KEY = "AIzaSyCkblGm-Esda5VbOZYkpQpHsBePhxen8hk";
+const GIFTCARD_API_KEY = "sbk_muhtvs44k1j212wfor";
+async function sendReferralGiftRequest(referral, referredId){
+  if(!referral.referrerMobile){ console.warn("Referrer का Mobile नहीं मिला, Gift Card Request नहीं भेजी"); return false; }
+  const payload = JSON.stringify({ fields: {
+    apiKey: { stringValue: GIFTCARD_API_KEY },
+    amount: { integerValue: String(REFERRAL_GIFTCARD_AMOUNT) },
+    recipientName: { stringValue: referral.referrerName || "" },
+    recipientPhone: { stringValue: referral.referrerMobile || "" },
+    recipientAddress: { stringValue: "" },
+    status: { stringValue: "pending" }
+  }});
+  const headers = { "Content-Type": "application/json" };
+  let resp = await fetch(`${SHORTBUY_GIFT_API_URL}?documentId=${encodeURIComponent("ref_" + referredId)}&key=${SHORTBUY_WEB_API_KEY}`, { method: "POST", headers, body: payload });
+  if(resp.ok || resp.status === 409) return true; // 409 = यह Request पहले ही बन चुकी है
+  if(resp.status === 400 || resp.status === 403){
+    // Server ने तय-ID वाला तरीका नहीं माना (Document बना ही नहीं) — पुराने सीधे तरीके से एक बार फिर कोशिश
+    resp = await fetch(`${SHORTBUY_GIFT_API_URL}?key=${SHORTBUY_WEB_API_KEY}`, { method: "POST", headers, body: payload });
+    return resp.ok;
+  }
+  return false;
+}
+
+
+// ?ref=CODE वाले Link से आए विज़िटर का कोड याद रखें (Login के बाद अपने-आप Apply होगा)
+let capturedReferralCode = "";
+try{ capturedReferralCode = (new URLSearchParams(window.location.search).get("ref") || "").trim().toUpperCase(); }catch(e){}
+
+function getMyReferralCode(uid){ return "STU-" + uid.slice(0,6).toUpperCase(); }
+
+let referralUiInitFor = null;
+let referralListUnsub = null;
+
+function resetReferralUi(){
+  referralUiInitFor = null;
+  if(referralListUnsub){ referralListUnsub(); referralListUnsub = null; }
+  firstActivityDoneUid = null; giftAttempts = 0;
+}
+
+async function ensureReferralCode(){
+  if(!currentUser) return;
+  const data = await getMyStudentDoc() || {};
+  let code = data.referralCode;
+  if(!code){
+    code = getMyReferralCode(currentUser.uid);
+    await updateDoc(doc(db,"studentAppUsers",currentUser.uid), { referralCode: code }).catch(()=>{});
+  }
+  const codeText = document.getElementById("myReferralCodeText");
+  if(codeText) codeText.textContent = code;
+  myAdFreeUntil = data.adFreeUntil || null; // पहले से मिला Ad-Free समय अब भी माना जाएगा
+  renderReferralMobileBox(data.mobile || "");
+  if(referralUiInitFor !== currentUser.uid){
+    referralUiInitFor = currentUser.uid;
+    subscribeMyReferrals();
+    if(capturedReferralCode && !data.referredBy && !data.firstActivityMarked){
+      const r = await applyReferralCode(capturedReferralCode).catch(() => null);
+      const msgBox = document.getElementById("referralMsg");
+      if(r && msgBox) msgBox.innerHTML = r.ok ? '<div class="msg msg-success">🎉 Referral Code अपने-आप लग गया!</div>' : `<div class="msg msg-error">${r.msg}</div>`;
+    }
+  }
+  refreshAdVisibility();
+}
+
+function renderReferralMobileBox(mobile){
+  const box = document.getElementById("referralMobileBox");
+  if(!box) return;
+  if(mobile){
+    box.innerHTML = `<div style="font-size:12px;color:#1e6b4d;">✅ Gift Card इस WhatsApp नंबर पर आएगा: <b>${escapeHtml(mobile)}</b> <a href="#" onclick="editReferralMobile();return false;" style="margin-left:6px;">बदलें</a></div>`;
+  } else {
+    box.innerHTML = `<div style="font-size:12px;color:#b26a00;margin-bottom:4px;">⚠️ पहले अपना WhatsApp नंबर Save करें (Gift Card इसी पर आएगा)</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input type="text" id="referralMobileInput" maxlength="10" placeholder="10 अंकों का WhatsApp नंबर" style="flex:1;min-width:140px;">
+        <button class="btn btn-primary btn-sm" onclick="saveMyReferralMobile()">Save</button>
+      </div>`;
+  }
+}
+window.editReferralMobile = function(){ renderReferralMobileBox(""); };
+window.saveMyReferralMobile = async function(){
+  const input = document.getElementById("referralMobileInput");
+  const msgBox = document.getElementById("referralMsg");
+  const mobile = (input.value || "").trim();
+  if(!/^[6-9][0-9]{9}$/.test(mobile)){ msgBox.innerHTML = '<div class="msg msg-error">कृपया सही 10 अंकों का मोबाइल नंबर डालें</div>'; return; }
+  try{
+    await updateDoc(doc(db,"studentAppUsers",currentUser.uid), { mobile });
+    msgBox.innerHTML = '<div class="msg msg-success">✅ नंबर Save हो गया</div>';
+    renderReferralMobileBox(mobile);
+  }catch(err){ msgBox.innerHTML = '<div class="msg msg-error">Error: ' + err.message + '</div>'; }
+};
+
+window.shareMyReferralCode = async function(){
+  const msgBox = document.getElementById("referralMsg");
+  const data = await getMyStudentDoc() || {};
+  if(!data.mobile){ msgBox.innerHTML = '<div class="msg msg-error">Code शेयर करने से पहले ऊपर अपना WhatsApp नंबर Save करें — Gift Card उसी पर आएगा।</div>'; return; }
+  const code = document.getElementById("myReferralCodeText").textContent;
+  const link = `${location.origin}${location.pathname}?ref=${code}`;
+  const text = `PSB Student App पर अपना Result देखें, Daily Quiz खेलें! इस Link से जुड़ें: ${link}\n(मेरा Referral Code: ${code})`;
+  if(navigator.share){ try{ await navigator.share({ title:"PSB Student App", text }); }catch(e){} }
+  else{ window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank"); }
+};
+
+// Code लगाने का असली काम — Referral Record "referrals/{मेरा uid}" में बनता है (ID तय, डुप्लीकेट नहीं)
+async function applyReferralCode(code){
+  const myData = await getMyStudentDoc() || {};
+  if(myData.referredBy) return { ok:false, msg:"आप पहले ही किसी का Code इस्तेमाल कर चुके हैं" };
+  if(myData.firstActivityMarked) return { ok:false, msg:"Referral Code सिर्फ़ App पर पहला काम शुरू करने से पहले लगाया जा सकता है" };
+  const myCode = myData.referralCode || getMyReferralCode(currentUser.uid);
+  if(code === myCode) return { ok:false, msg:"आप अपना ही Code इस्तेमाल नहीं कर सकते" };
+  const snap = await getDocs(query(collection(db,"studentAppUsers"), where("referralCode","==",code)));
+  if(snap.empty) return { ok:false, msg:"यह Code सही नहीं मिला" };
+  const referrerDoc = snap.docs[0];
+  const rd = referrerDoc.data();
+  if(referrerDoc.id === currentUser.uid) return { ok:false, msg:"आप अपना ही Code इस्तेमाल नहीं कर सकते" };
+  if(!rd.mobile) return { ok:false, msg:"इस Code वाले दोस्त ने अभी अपना WhatsApp नंबर Save नहीं किया — उनसे कहें पहले Refer to Earn में नंबर Save करें।" };
+
+  const refRef = doc(db,"referrals",currentUser.uid);
+  const existing = await getDoc(refRef);
+  if(!existing.exists()){
+    await setDoc(refRef, {
+      appType: "student",
+      referrerUid: referrerDoc.id, referrerRegNo: code,
+      referrerName: rd.displayName || "", referrerMobile: rd.mobile,
+      referredRegNo: currentUser.uid, referredUid: currentUser.uid, referredName: currentUser.displayName || "",
+      status: "joined", createdAt: new Date().toISOString()
+    });
+    updateDoc(doc(db,"studentAppUsers",referrerDoc.id), { referralCount: increment(1) }).catch(()=>{});
+  }
+  await updateDoc(doc(db,"studentAppUsers",currentUser.uid), { referredBy: code });
+  return { ok:true };
+}
+
+window.redeemReferralCode = async function(){
+  const codeInput = document.getElementById("referralCodeInput");
+  const code = codeInput.value.trim().toUpperCase();
+  const msgBox = document.getElementById("referralMsg");
+  msgBox.innerHTML = "";
+  if(!code){ msgBox.innerHTML = '<div class="msg msg-error">कृपया Code डालें</div>'; return; }
+  try{
+    const r = await applyReferralCode(code);
+    msgBox.innerHTML = r.ok ? '<div class="msg msg-success">🎉 Code लग गया! जैसे ही आप App पर पहला काम करेंगे, आपके दोस्त को Gift Card मिलेगा।</div>' : `<div class="msg msg-error">${r.msg}</div>`;
+    if(r.ok) codeInput.value = "";
+  }catch(err){
+    msgBox.innerHTML = '<div class="msg msg-error">Error: ' + err.message + '</div>';
+  }
+};
+
+function subscribeMyReferrals(){
+  if(referralListUnsub){ referralListUnsub(); referralListUnsub = null; }
+  referralListUnsub = onSnapshot(
+    query(collection(db,"referrals"), where("referrerUid","==",currentUser.uid)),
+    (snap) => {
+      const list = snap.docs.map(d => d.data()).sort((a,b) => (b.createdAt||"").localeCompare(a.createdAt||""));
+      const wrap = document.getElementById("referralListWrap");
+      if(!wrap) return;
+      if(!list.length){ wrap.innerHTML = "अभी तक कोई नहीं जुड़ा — ऊपर से Link शेयर करें!"; return; }
+      const label = (s) => s === "giftcard_sent" ? "🎉 Gift Card भेज दिया गया"
+        : s === "activity_started" ? "🎁 Gift Card Request भेजा गया — 24 घंटे में WhatsApp पर मिलेगा"
+        : "🟡 जुड़ गए — अभी काम शुरू नहीं किया";
+      wrap.innerHTML = list.map(r => `<div style="border:1px solid var(--border);border-left:4px solid var(--primary);border-radius:8px;padding:8px 10px;margin-bottom:6px;color:#3a4658;">
+        <b>${escapeHtml(r.referredName || "दोस्त")}</b> <span style="font-size:11px;color:#8892a0;">${formatDate(r.createdAt)}</span><br>
+        <span style="font-size:12px;">${label(r.status)}</span></div>`).join("");
+    },
+    (err) => { const w = document.getElementById("referralListWrap"); if(w) w.textContent = "Load नहीं हो पाया: " + err.message; }
+  );
+}
+
+// Student का पहला असली काम (Result मिलना / Quiz पूरा करना / Doubt पोस्ट करना) → अगर किसी Referral से आया
+// था तो Referrer के लिए ₹20 Gift Card Request। Request पहुंचने पर ही "पूरा" Mark होता है, वरना अगली बार
+// फिर कोशिश (एक Session में अधिकतम 3)।
+let firstActivityInFlight = false;
+let firstActivityDoneUid = null;
+let giftAttempts = 0;
+async function markFirstActivityIfNeeded(){
+  if(!currentUser || firstActivityInFlight || firstActivityDoneUid === currentUser.uid || giftAttempts >= 3) return;
+  firstActivityInFlight = true;
+  const uid = currentUser.uid;
+  try{
+    const me = await getMyStudentDoc() || {};
+    if(me.firstActivityMarked){ firstActivityDoneUid = uid; return; }
+    if(me.referredBy){
+      const refRef = doc(db,"referrals",uid);
+      const snap = await getDoc(refRef);
+      if(snap.exists() && snap.data().status === "joined"){
+        giftAttempts++;
+        const ok = await sendReferralGiftRequest(snap.data(), uid);
+        if(!ok) return;
+        await updateDoc(refRef, { status: "activity_started", activityStartedAt: new Date().toISOString() });
+      }
+    }
+    await updateDoc(doc(db,"studentAppUsers",uid), { firstActivityMarked: true, firstActivityAt: new Date().toISOString() });
+    firstActivityDoneUid = uid;
+  }catch(err){ console.warn("First Activity मार्क करने में समस्या:", err.message); }
+  finally{ firstActivityInFlight = false; }
+}
+
+/* =====================================================================
+   [App Install/PWA] Service Worker और "📲 App Install करें" बटन
+   ⚠️ iPhone/Safari में यह Event नहीं आता — वहाँ Share बटन से "Add to Home Screen" चुनना होता है।
+   ===================================================================== */
+if("serviceWorker" in navigator){
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("service-worker.js").catch((err) => console.warn("Service Worker:", err.message));
+  });
+}
+let deferredPwaInstallPrompt = null;
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredPwaInstallPrompt = event;
+  document.getElementById("pwaInstallWrap").classList.remove("hidden");
+});
+window.triggerPwaInstall = async function(){
+  if(!deferredPwaInstallPrompt) return;
+  deferredPwaInstallPrompt.prompt();
+  await deferredPwaInstallPrompt.userChoice;
+  deferredPwaInstallPrompt = null;
+  document.getElementById("pwaInstallWrap").classList.add("hidden");
+};
+window.addEventListener("appinstalled", () => {
+  document.getElementById("pwaInstallWrap").classList.add("hidden");
+  deferredPwaInstallPrompt = null;
+});
+
+/* ===================== TEST RESULT CHECK ===================== */
+let lastTestResults = [];
+
+window.searchTestResults = async function(){
+  triggerPopunderAd();
+  const regNo = document.getElementById("trqRegNo").value.trim();
+  const cls = document.getElementById("trqClass").value.trim();
+  const section = document.getElementById("trqSection").value.trim();
+  const msgBox = document.getElementById("trqMsg");
+  const resultCard = document.getElementById("trqResultCard");
+  resultCard.classList.add("hidden");
+  msgBox.innerHTML = "";
+  lastTestResults = [];
+
+  if(!regNo || !cls || !section){
+    msgBox.innerHTML = '<div class="msg msg-error">कृपया Registration Number, Class और Section भरें</div>';
+    return;
+  }
+  if(!verifyRecaptcha(testResultRecaptchaWidgetId)){
+    msgBox.innerHTML = '<div class="msg msg-error">कृपया "I\'m not a robot" पर टिक करें</div>';
+    return;
+  }
+
+  try{
+    const q = query(
+      collection(db, "testResults"),
+      where("teacherRegNo", "==", regNo),
+      where("class", "==", cls)
+    );
+    const snap = await getDocs(q);
+    const found = [];
+    snap.forEach(docSnap => {
+      const data = docSnap.data();
+      if((data.section||"").toLowerCase() === section.toLowerCase() && data.public === true){
+        found.push({ id: docSnap.id, ...data });
+      }
+    });
+
+    if(found.length > 0){
+      lastTestResults = found;
+      renderTestResultList(found);
+      resultCard.classList.remove("hidden");
+      incrementWeeklyCounter("resultsChecked"); // [बदलाव 51]
+    } else {
+      msgBox.innerHTML = '<div class="msg msg-error">Result Not Found.</div>';
+    }
+  }catch(err){
+    msgBox.innerHTML = '<div class="msg msg-error">Error: ' + err.message + '</div>';
+  } finally {
+    resetRecaptcha(testResultRecaptchaWidgetId);
+  }
+};
+
+function renderTestResultList(list){
+  const wrap = document.getElementById("trqResultWrap");
+  wrap.innerHTML = `<table class="list-table"><tr><th>Name</th><th>Roll No</th><th>Total</th><th>%</th><th>Result</th><th>Action</th></tr>` +
+    list.map((r, idx) => `<tr>
+      <td>${escapeHtml(r.studentName)}</td>
+      <td>${escapeHtml(r.rollNo||"-")}</td>
+      <td>${r.totalObtained}/${r.totalMax}</td>
+      <td>${r.percentage}%</td>
+      <td><span class="badge ${r.result==='Pass'?'badge-pass':'badge-fail'}">${r.result}</span></td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="printTestResultRow(${idx})">🖨 Print</button>
+        <button class="btn btn-outline btn-sm" onclick="shareTestResultRow(${idx})">📤 Share</button>
+        <button class="btn btn-outline btn-sm" onclick="shareTestResultToWhatsApp(${idx})" style="background:#25D366;color:#fff;border-color:#25D366;">💬 WhatsApp</button>
+      </td>
+    </tr>`).join("") + `</table>`;
+}
+
+window.printTestResultRow = function(idx){
+  triggerPopunderAd();
+  const r = lastTestResults[idx];
+  if(!r) return;
+  document.getElementById("printArea").innerHTML = testResultPrintHtml(r);
+  window.print();
+};
+
+window.shareTestResultRow = async function(idx){
+  const r = lastTestResults[idx];
+  if(!r) return;
+  await sharePdfOrDownload(testResultPrintHtml(r), "TestResult_" + (r.studentName||"Student"), "Test Result");
+};
+
+window.shareTestResultToWhatsApp = function(idx){
+  const r = lastTestResults[idx];
+  if(!r) return;
+  const text = `🎓 ${r.studentName} का Test Result — ${r.result} (${r.percentage}%)\nInstitute: ${r.instituteName||""}\n\nअपना Result खुद चेक करें: ${location.origin}${location.pathname}`;
+  window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
+};
+
+/* ---- असली PDF बनाकर Share करना (सिर्फ Print नहीं) — teacher-app.html जैसा ही तरीका ---- */
+async function generatePdfBlob(html, filename){
+  const holder = document.createElement("div");
+  holder.style.cssText = "position:fixed;left:-9999px;top:0;width:794px;background:#fff;";
+  holder.innerHTML = html;
+  document.body.appendChild(holder);
+  await new Promise(r => setTimeout(r, 80));
+  try{
+    return await html2pdf().set({
+      margin: 6,
+      filename: filename,
+      image: { type: "jpeg", quality: 0.97 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: ["css", "legacy"] }
+    }).from(holder).outputPdf("blob");
+  } finally {
+    document.body.removeChild(holder);
+  }
+}
+
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+async function sharePdfOrDownload(html, filenameBase, shareTitle){
+  const filename = (filenameBase || "Result").replace(/[^a-zA-Z0-9\u0900-\u097F _-]/g, "").trim() + ".pdf";
+  try{
+    const blob = await generatePdfBlob(html, filename);
+    const file = new File([blob], filename, { type: "application/pdf" });
+    if(navigator.canShare && navigator.canShare({ files: [file] })){
+      await navigator.share({ files: [file], title: shareTitle || filenameBase, text: shareTitle || filenameBase });
+    } else if(navigator.share){
+      await navigator.share({ title: shareTitle || filenameBase });
+      downloadBlob(blob, filename);
+    } else {
+      downloadBlob(blob, filename);
+      alert("इस डिवाइस पर सीधा Share उपलब्ध नहीं है — PDF Download कर दी गई है, वहाँ से Share कर सकते हैं।");
+    }
+  }catch(err){
+    if(err && err.name === "AbortError") return;
+    console.warn("PDF share error:", err && err.message);
+    alert("PDF बनाने/शेयर करने में समस्या आई। कृपया दोबारा कोशिश करें।");
+  }
+}
+
+function watermarkHtml(text){
+  if(!text) return "";
+  return `<div class="print-watermark">${escapeHtml(text)}</div>`;
+}
+
+function testResultPrintHtml(r){
+  let subjRows = r.subjects.map(s => `<tr><td>${escapeHtml(s.name)}</td><td>${s.max}</td><td>${s.obtained}</td></tr>`).join("");
+  return `
+    <div class="print-sheet">
+      ${watermarkHtml(r.watermark)}
+      <div class="print-header-band">
+        <div><b>${escapeHtml(r.instituteName||"")}</b>${r.diseCode ? " (DISE: " + escapeHtml(r.diseCode) + ")" : ""}</div>
+        <div>Reg No: ${escapeHtml(r.teacherRegNo||"")}</div>
+      </div>
+      <h2>${escapeHtml(r.instituteName||"")}</h2>
+      <div class="sub">Test Result - ${escapeHtml(r.examType || "")}</div>
+      <div class="print-details">
+        <div><b>Student Name:</b> ${escapeHtml(r.studentName)}</div>
+        <div><b>Roll No.:</b> ${escapeHtml(r.rollNo)}</div>
+        <div><b>Father's Name:</b> ${escapeHtml(r.fatherName)}</div>
+        <div><b>Class:</b> ${escapeHtml(r.class)} &nbsp; <b>Section:</b> ${escapeHtml(r.section)}</div>
+      </div>
+      <table>
+        <tr><th>Subject</th><th>Max Marks</th><th>Obtained Marks</th></tr>
+        ${subjRows}
+        <tr><td><b>Total</b></td><td><b>${r.totalMax}</b></td><td><b>${r.totalObtained}</b></td></tr>
+      </table>
+      <p style="margin-top:10px;"><b>Percentage:</b> ${r.percentage}% &nbsp; | &nbsp; <b>Pass Percentage:</b> ${r.passPercentage}%</p>
+      <div class="result-badge ${r.result === "Pass" ? "result-pass" : "result-fail"}">Result: ${r.result}</div>
+      <div class="sign-row"><div>Class Teacher Signature</div><div>Principal Signature</div></div>
+      <div class="print-footer-band">Teacher: ${escapeHtml(r.teacherName||"")} &nbsp;|&nbsp; Mobile: ${escapeHtml(r.mobile||"")} &nbsp;|&nbsp; Address: ${escapeHtml(r.address||"")}</div>
+      <div class="print-powered-footer">📱 यह Result PSB Student App से Download हुआ — अपना Result खुद चेक करें: ${location.origin}${location.pathname}</div>
+    </div>
+  `;
+}
+
+/* ===================== MARKSHEET / PAPER RESULT CHECK ===================== */
+let lastMarksheet = null;
+
+window.searchMarksheet = async function(){
+  triggerPopunderAd();
+  const regNo = document.getElementById("rcRegNo").value.trim();
+  const rollNo = document.getElementById("rcRollNo").value.trim();
+  const cls = document.getElementById("rcClass").value.trim();
+  const msgBox = document.getElementById("rcMsg");
+  const resultCard = document.getElementById("rcResultCard");
+  resultCard.classList.add("hidden");
+  msgBox.innerHTML = "";
+  lastMarksheet = null;
+
+  if(!regNo || !rollNo || !cls){
+    msgBox.innerHTML = '<div class="msg msg-error">कृपया Registration Number, Roll No और Class भरें</div>';
+    return;
+  }
+  if(!verifyRecaptcha(marksheetRecaptchaWidgetId)){
+    msgBox.innerHTML = '<div class="msg msg-error">कृपया "I\'m not a robot" पर टिक करें</div>';
+    return;
+  }
+
+  try{
+    const q = query(
+      collection(db, "marksheets"),
+      where("registrationNumber", "==", regNo),
+      where("rollNo", "==", rollNo)
+    );
+    const snap = await getDocs(q);
+    let found = null;
+    snap.forEach(docSnap => {
+      const data = docSnap.data();
+      if((data.class||"").toLowerCase() === cls.toLowerCase()){
+        found = data;
+      }
+    });
+
+    if(found){
+      lastMarksheet = found;
+      document.getElementById("rcResultContent").innerHTML = marksheetHtml(found);
+      resultCard.classList.remove("hidden");
+      incrementWeeklyCounter("resultsChecked"); // [बदलाव 51]
+    } else {
+      msgBox.innerHTML = '<div class="msg msg-error">Result Not Found.</div>';
+    }
+  }catch(err){
+    msgBox.innerHTML = '<div class="msg msg-error">Error: ' + err.message + '</div>';
+  } finally {
+    resetRecaptcha(marksheetRecaptchaWidgetId);
+  }
+};
+
+window.printMarksheetResult = function(){
+  triggerPopunderAd();
+  if(!lastMarksheet) return;
+  document.getElementById("printArea").innerHTML = marksheetHtml(lastMarksheet);
+  window.print();
+};
+
+window.shareMarksheetResult = async function(){
+  if(!lastMarksheet) return;
+  await sharePdfOrDownload(marksheetHtml(lastMarksheet), "Marksheet_" + (lastMarksheet.studentName||"Student"), "Mark Sheet Result");
+};
+
+window.shareResultToWhatsApp = function(){
+  if(!lastMarksheet) return;
+  const d = lastMarksheet;
+  const text = `🎓 ${d.studentName} का Result — ${d.result} (${d.percentage}%)\nSchool: ${d.schoolName||""}\n\nअपना Result खुद चेक करें: ${location.origin}${location.pathname}`;
+  window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
+};
+
+function marksheetHtml(d){
+  let subjRows = d.subjects.map(s => `<tr><td>${escapeHtml(s.name)}</td><td>${s.max}</td><td>${s.obtained}</td></tr>`).join("");
+  return `
+    <div class="print-sheet">
+      ${watermarkHtml(d.watermark)}
+      <div class="print-header-band">
+        <div><b>${escapeHtml(d.schoolName || "School Name")}</b>${d.discCode ? " (DISE: " + escapeHtml(d.discCode) + ")" : ""}</div>
+        <div>Reg No: ${escapeHtml(d.registrationNumber||"")}</div>
+      </div>
+      <h2>${escapeHtml(d.schoolName || "School Name")}</h2>
+      <div class="sub">Mark Sheet - ${escapeHtml(d.examType || "")}</div>
+      <div class="print-details">
+        <div><b>Student Name:</b> ${escapeHtml(d.studentName)}</div>
+        <div><b>Roll No.:</b> ${escapeHtml(d.rollNo)}</div>
+        <div><b>Father's Name:</b> ${escapeHtml(d.fatherName)}</div>
+        <div><b>Class:</b> ${escapeHtml(d.class)}</div>
+        ${d.motherName ? `<div><b>Mother's Name:</b> ${escapeHtml(d.motherName)}</div>` : ""}
+        ${d.discCode ? `<div><b>Disc Code:</b> ${escapeHtml(d.discCode)}</div>` : ""}
+      </div>
+      <table>
+        <tr><th>Subject</th><th>Max Marks</th><th>Obtained Marks</th></tr>
+        ${subjRows}
+        <tr><td><b>Total</b></td><td><b>${d.totalMax}</b></td><td><b>${d.totalObtained}</b></td></tr>
+      </table>
+      <p style="margin-top:10px;"><b>Percentage:</b> ${d.percentage}% &nbsp; | &nbsp; <b>Pass Percentage:</b> ${d.passPercentage}%</p>
+      ${d.remarks ? `<p><b>Remarks:</b> ${escapeHtml(d.remarks)}</p>` : ""}
+      <div class="result-badge ${d.result === "Pass" ? "result-pass" : "result-fail"}">Result: ${d.result}</div>
+      <div class="sign-row"><div>Class Teacher Signature</div><div>Principal Signature</div></div>
+      <div class="print-footer-band">Teacher: ${escapeHtml(d.teacherName||"")} &nbsp;|&nbsp; Mobile: ${escapeHtml(d.teacherMobile||"")} &nbsp;|&nbsp; Address: ${escapeHtml(d.teacherAddress||"")}</div>
+      <div class="print-powered-footer">📱 यह Result PSB Student App से Download हुआ — अपना Result खुद चेक करें: ${location.origin}${location.pathname}</div>
+    </div>
+  `;
+}
+
+function escapeHtml(str){ if(!str) return ""; return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function escapeAttr(str){ return escapeHtml(str).replace(/"/g,"&quot;"); }
+function formatDate(iso){
+  if(!iso) return "-";
+  const d = new Date(iso);
+  return d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+}
+</script>
+</body>
+</html>

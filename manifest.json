@@ -1,0 +1,15 @@
+{
+  "name": "PSB Teacher PRO",
+  "short_name": "PSB Teacher",
+  "description": "Paper, Notes, Mark Sheet, Admit/ID Card, Attendance और Test Result — Teachers के लिए एक ही App में।",
+  "start_url": "./teacher-app.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f2f5fa",
+  "theme_color": "#1e4d8c",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
